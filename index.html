@@ -85,6 +85,10 @@ h3 { font-size: 1.02rem; margin: 18px 0 6px; }
 .check-label { font-weight: 600; min-width: 2.5em; }
 .check input { font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); min-width: 0; }
 .check input[type=text] { flex: 1 1 180px; } .check input.unit { flex: 0 1 90px; }
+.numkeys { display: inline-flex; gap: 4px; }
+.key { font: inherit; font-weight: 700; min-width: 40px; min-height: 38px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; touch-action: manipulation; }
+.key:active { background: var(--accent); color: var(--accent-ink); }
+.check input { font-size: 16px; }
 .feedback { flex-basis: 100%; font-size: 14px; } .feedback:empty { display: none; }
 .feedback.good, .feedback.bad, .feedback.warn { padding: 6px 10px; border-radius: 8px; }
 .feedback.good { background: var(--good-bg); color: var(--good); } .feedback.bad { background: var(--bad-bg); color: var(--bad); } .feedback.warn { background: var(--warn-bg); color: var(--warn); }

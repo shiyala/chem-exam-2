@@ -149,6 +149,25 @@ function formatConfig(map) {
 }
 
 /* ---------------- answer checking UI ---------------- */
+function insertAt(inp, text) {
+  const a = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+  const b = inp.selectionEnd == null ? inp.value.length : inp.selectionEnd;
+  inp.value = inp.value.slice(0, a) + text + inp.value.slice(b);
+  const pos = a + text.length;
+  try { inp.setSelectionRange(pos, pos); } catch (e) {}
+  inp.focus();
+}
+function numKeys(inp) {
+  const keys = el("span", { class: "numkeys" });
+  [["E", "e", "Insert E (times ten to the power)"], ["−", "-", "Insert minus sign"]].forEach(([lab, val, aria]) => {
+    const b = el("button", { class: "key", type: "button", "aria-label": aria, tabindex: "-1" }, lab);
+    b.addEventListener("pointerdown", e => e.preventDefault());
+    b.addEventListener("mousedown", e => e.preventDefault());
+    b.addEventListener("click", () => insertAt(inp, val));
+    keys.appendChild(b);
+  });
+  return keys;
+}
 function checkWidget(check, onResult) {
   const wrap = el("div", { class: "check" });
   const label = el("span", { class: "check-label" }, R(check.label || ""));
@@ -170,8 +189,9 @@ function checkWidget(check, onResult) {
     inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
     wrap.appendChild(btn);
   } else {
-    const inp = el("input", { type: "text", inputmode: "decimal", placeholder: check.sf ? "e.g. 3.32 x 10^4" : "number", class: "num", "aria-label": "value " + (check.label || "") });
+    const inp = el("input", { type: "text", inputmode: "text", autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
     wrap.appendChild(inp);
+    wrap.appendChild(numKeys(inp));
     let unit = null;
     if (check.units) {
       unit = el("input", { type: "text", placeholder: "unit", class: "unit", "aria-label": "unit " + (check.label || "") });
@@ -193,7 +213,7 @@ function checkWidget(check, onResult) {
 }
 function gradeNumber(check, raw, unitRaw) {
   const p = parseNumber(raw);
-  if (!p) return { ok: false, cls: "bad", msg: "Enter a number, like 0.308 or 3.32 x 10^4." };
+  if (!p) return { ok: false, cls: "bad", msg: "Enter a number, like 0.308, 3.32e4 or 6.02e-23." };
   const target = check.value;
   let v = p.value;
   if (check.abs) { v = Math.abs(v); }
@@ -387,7 +407,7 @@ function problemCard(p, opts = {}) {
 VIEWS.practice = main => {
   const sub = (location.hash.split("/")[1] || "all");
   main.appendChild(el("h1", {}, "Practice problems"));
-  main.appendChild(el("p", { class: "lead" }, "Work each one on paper first, then check. The checker grades the number, the sig figs and the unit, like Dr. Butler does. Type powers of ten as 3.32 x 10^4 or 3.32e4."));
+  main.appendChild(el("p", { class: "lead" }, "Work each one on paper first, then check. The checker grades the number, the sig figs and the unit, like Dr. Butler does. Type powers of ten with an E: 3.32e4 means 3.32 × 10^4 and 6.02e-23 means 6.02 × 10^−23. The E and − buttons next to each box help on a phone."));
   const filters = el("div", { class: "filters" });
   const status = store.get("probs", {});
   [["all", "All"], ["Ch3", "Ch 3"], ["Ch4", "Ch 4"], ["Ch5", "Ch 5"], ["Ch6", "Ch 6"], ["redo", "Redo list"]].forEach(([k, t]) => {
@@ -692,7 +712,7 @@ DRILLS.acids = { name: "Strong or weak", ch: "Ch 4", run: mcDrill(() => {
 VIEWS.drills = main => {
   const id = location.hash.split("/")[1];
   main.appendChild(el("h1", {}, "Drills"));
-  main.appendChild(el("p", { class: "lead" }, "Random questions, as many as you want. Number answers are graded for value, sig figs and unit."));
+  main.appendChild(el("p", { class: "lead" }, "Random questions, as many as you want. Number answers are graded for value, sig figs and unit. Type powers of ten with an E, like 6.02e-23."));
   const tabs = el("div", { class: "filters" });
   Object.entries(DRILLS).forEach(([k, d]) => tabs.appendChild(el("a", { class: "chip" + (k === id ? " on" : ""), href: "#drills/" + k }, `${d.name} <small>${d.ch}</small>`)));
   main.appendChild(tabs);
