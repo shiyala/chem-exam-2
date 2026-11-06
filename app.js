@@ -47,17 +47,86 @@ const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 /* ---------------- number parsing and sig figs ---------------- */
+const SUP = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁻": "-", "⁺": "+" };
+const SUB = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "-" };
+/* Turn any typed math into one plain form: * / ^ - ( ), no spaces, superscripts as ^(...). */
+function normalizeMath(raw) {
+  let s = String(raw == null ? "" : raw).trim();
+  s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]+/g, m => "^(" + [...m].map(c => SUP[c]).join("") + ")");
+  s = s.replace(/[₀-₉₊₋]/g, c => SUB[c]);
+  s = s.replace(/[−–—]/g, "-").replace(/[×✕✖·•⋅]/g, "*").replace(/÷/g, "/").replace(/\*\*/g, "^");
+  s = s.replace(/(\d)\s*[xX]\s*(?=[\d(.])/g, "$1*");
+  s = s.replace(/(\d),(?=\d{3}(\D|$))/g, "$1");
+  s = s.replace(/\s+/g, "");
+  s = s.replace(/^=+|=+$/g, "");
+  return s;
+}
 function parseNumber(raw) {
   if (raw == null) return null;
-  let s = String(raw).trim().replace(/[−–]/g, "-").replace(/,/g, "").replace(/\s+/g, "");
+  let s = normalizeMath(raw);
   if (!s) return null;
-  s = s.replace(/[×xX*]10\^?\(?([+\-]?\d+)\)?$/, "e$1").replace(/[×xX*]10$/, "e1");
-  const m = s.match(/^([+\-]?)(\d*\.?\d*)(?:[eE]([+\-]?\d+))?$/);
+  s = s.replace(/\*10\^\(?([+\-]?\d+)\)?$/, "e$1").replace(/\*10$/, "e1");
+  const m = s.match(/^([+\-]?)(\d*\.?\d*)(?:[eE]\(?([+\-]?\d+)\)?)?$/);
   if (!m || !m[2] || m[2] === ".") return null;
   const mant = m[2];
   const value = parseFloat(m[1] + mant + (m[3] ? "e" + m[3] : ""));
   if (!isFinite(value)) return null;
-  return { value, sf: sigFigs(mant, !!m[3]), decimals: mant.includes(".") ? mant.split(".")[1].length - (m[3] ? parseInt(m[3], 10) : 0) : -(m[3] ? parseInt(m[3], 10) : 0), ambiguous: !mant.includes(".") && /[1-9]0+$/.test(mant) && !m[3] };
+  return { value, sf: sigFigs(mant, !!m[3]), ambiguous: !mant.includes(".") && /[1-9]0+$/.test(mant) && !m[3] };
+}
+/* Safe calculator for typed expressions: + - * / ^, parentheses, E notation, sqrt, log, ln, exp. */
+function evalExpr(raw) {
+  const s = normalizeMath(raw).toLowerCase();
+  if (!s) return null;
+  let i = 0;
+  const peek = () => s[i];
+  const num = () => {
+    const m = s.slice(i).match(/^(\d+\.?\d*|\.\d+)(e[+\-]?\d+)?/);
+    if (!m) return null;
+    i += m[0].length;
+    return parseFloat(m[0]);
+  };
+  const FN = { sqrt: Math.sqrt, log: Math.log10, ln: Math.log, exp: Math.exp };
+  function primary() {
+    const c = peek();
+    if (c === "(") { i++; const v = expr(); if (peek() !== ")") throw 0; i++; return v; }
+    for (const f of Object.keys(FN)) if (s.startsWith(f + "(", i)) { i += f.length; return FN[f](primary()); }
+    if (s.startsWith("pi", i)) { i += 2; return Math.PI; }
+    const n = num();
+    if (n == null) throw 0;
+    return n;
+  }
+  function unary() {
+    if (peek() === "-") { i++; return -unary(); }
+    if (peek() === "+") { i++; return unary(); }
+    return power();
+  }
+  function power() {
+    const b = primary();
+    if (peek() === "^") { i++; return Math.pow(b, unary()); }
+    return b;
+  }
+  function term() {
+    let v = unary();
+    for (;;) {
+      if (peek() === "*") { i++; v *= unary(); }
+      else if (peek() === "/") { i++; v /= unary(); }
+      else if (peek() === "(" || /[a-z]/.test(peek() || "")) { v *= unary(); }
+      else return v;
+    }
+  }
+  function expr() {
+    let v = term();
+    for (;;) {
+      if (peek() === "+") { i++; v += term(); }
+      else if (peek() === "-") { i++; v -= term(); }
+      else return v;
+    }
+  }
+  try {
+    const v = expr();
+    if (i !== s.length || !isFinite(v)) return null;
+    return v;
+  } catch (e) { return null; }
 }
 function sigFigs(mant) {
   let s = mant.replace(/^[+\-]/, "");
@@ -72,7 +141,7 @@ function sigFigs(mant) {
 function fmtSci(v, sf) {
   if (v === 0) return "0";
   const exp = Math.floor(Math.log10(Math.abs(v)));
-  if (exp >= -2 && exp <= 4) {
+  if (exp >= -2 && exp <= Math.min(4, sf - 1)) {
     const dec = Math.max(0, sf - 1 - exp);
     return Number(v).toFixed(dec);
   }
@@ -83,7 +152,8 @@ function normUnit(u) {
   return String(u || "").toLowerCase().replace(/[\s·*°()]/g, "").replace(/µ|μ/g, "u").replace(/−/g, "-");
 }
 function normText(t) {
-  return String(t || "").toLowerCase().replace(/[−–]/g, "-").replace(/[<>;]/g, ",").replace(/\s+/g, "").replace(/,+/g, ",").replace(/^,|,$/g, "");
+  let s = String(t || "").replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]/g, c => SUP[c]).replace(/[₀-₉₊₋]/g, c => SUB[c]);
+  return s.toLowerCase().replace(/[−–—]/g, "-").replace(/[<>;:,\s]+/g, ",").replace(/^,|,$/g, "");
 }
 
 /* ---------------- electron configurations ---------------- */
@@ -159,13 +229,26 @@ function insertAt(inp, text) {
 }
 function numKeys(inp) {
   const keys = el("span", { class: "numkeys" });
-  [["E", "e", "Insert E (times ten to the power)"], ["−", "-", "Insert minus sign"]].forEach(([lab, val, aria]) => {
-    const b = el("button", { class: "key", type: "button", "aria-label": aria, tabindex: "-1" }, lab);
+  const add = (lab, aria, fn, cls) => {
+    const b = el("button", { class: "key" + (cls ? " " + cls : ""), type: "button", "aria-label": aria, tabindex: "-1" }, lab);
     b.addEventListener("pointerdown", e => e.preventDefault());
     b.addEventListener("mousedown", e => e.preventDefault());
-    b.addEventListener("click", () => insertAt(inp, val));
+    b.addEventListener("click", () => fn(b));
     keys.appendChild(b);
-  });
+    return b;
+  };
+  add("E", "Insert E (times ten to the power)", () => insertAt(inp, "e"));
+  add("−", "Insert minus sign", () => insertAt(inp, "-"));
+  const label = () => inp.getAttribute("inputmode") === "decimal" ? "abc" : "123";
+  const tog = add(label(), "Switch between number pad and full keyboard", b => {
+    const next = inp.getAttribute("inputmode") === "decimal" ? "text" : "decimal";
+    store.set("kbd", next);
+    document.querySelectorAll("input.num").forEach(x => x.setAttribute("inputmode", next));
+    document.querySelectorAll(".key.kbd").forEach(x => { x.textContent = next === "decimal" ? "abc" : "123"; });
+    inp.blur();
+    setTimeout(() => inp.focus(), 60);
+  }, "kbd");
+  tog.textContent = label();
   return keys;
 }
 function checkWidget(check, onResult) {
@@ -189,7 +272,7 @@ function checkWidget(check, onResult) {
     inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
     wrap.appendChild(btn);
   } else {
-    const inp = el("input", { type: "text", inputmode: "text", autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
+    const inp = el("input", { type: "text", inputmode: store.get("kbd", "decimal"), autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
     wrap.appendChild(inp);
     wrap.appendChild(numKeys(inp));
     let unit = null;
@@ -212,8 +295,13 @@ function checkWidget(check, onResult) {
   return wrap;
 }
 function gradeNumber(check, raw, unitRaw) {
-  const p = parseNumber(raw);
-  if (!p) return { ok: false, cls: "bad", msg: "Enter a number, like 0.308, 3.32e4 or 6.02e-23." };
+  let p = parseNumber(raw);
+  let fromExpr = false;
+  if (!p) {
+    const ev = evalExpr(raw);
+    if (ev == null) return { ok: false, cls: "bad", msg: "I couldn't read that. Try 0.308, 3.32e4, 3.32 × 10^4 or a calculation like 6.626e-34*2.998e8/486.1e-9." };
+    p = { value: ev, sf: null, ambiguous: false }; fromExpr = true;
+  }
   const target = check.value;
   let v = p.value;
   if (check.abs) { v = Math.abs(v); }
@@ -227,12 +315,14 @@ function gradeNumber(check, raw, unitRaw) {
   }
   const notes = [];
   let ok = true;
-  if (check.sf && p.sf !== check.sf && !p.ambiguous) { ok = false; notes.push("You have " + p.sf + " sig fig" + (p.sf === 1 ? "" : "s") + "; this answer needs " + check.sf + " (" + R(fmtSci(t, check.sf)) + ")."); }
+  if (fromExpr && check.sf) notes.push("Worked out from your calculation. On the exam, write the final answer as " + R(fmtSci(t, check.sf)) + " (" + check.sf + " sig figs).");
+  if (!fromExpr && check.sf && p.sf !== check.sf && !p.ambiguous) { ok = false; notes.push("You have " + p.sf + " sig fig" + (p.sf === 1 ? "" : "s") + "; this answer needs " + check.sf + " (" + R(fmtSci(t, check.sf)) + ")."); }
   if (check.sf && p.ambiguous) notes.push("Trailing zeros without a decimal point are ambiguous. Use scientific notation: " + R(fmtSci(t, check.sf)) + ".");
   if (check.units) {
     if (!unitRaw || !unitRaw.trim()) { ok = false; notes.push("Missing unit. That cost points on Exam 1. Expected: " + check.units[0] + "."); }
     else if (!check.units.some(u => normUnit(u) === normUnit(unitRaw))) { ok = false; notes.push("Unit doesn't match. Expected " + check.units[0] + "."); }
   }
+  if (ok && fromExpr) return { ok: true, cls: "good", msg: "Correct value. " + notes.join(" ") };
   if (ok) return { ok: true, cls: "good", msg: "Correct, with the right sig figs and unit." };
   return { ok: false, cls: "warn", msg: "The number is right, but: " + notes.join(" ") };
 }
@@ -407,7 +497,7 @@ function problemCard(p, opts = {}) {
 VIEWS.practice = main => {
   const sub = (location.hash.split("/")[1] || "all");
   main.appendChild(el("h1", {}, "Practice problems"));
-  main.appendChild(el("p", { class: "lead" }, "Work each one on paper first, then check. The checker grades the number, the sig figs and the unit, like Dr. Butler does. Type powers of ten with an E: 3.32e4 means 3.32 × 10^4 and 6.02e-23 means 6.02 × 10^−23. The E and − buttons next to each box help on a phone."));
+  main.appendChild(el("p", { class: "lead" }, "Work each one on paper first, then check. The checker grades the number, the sig figs and the unit, like Dr. Butler does. Type answers any way you like: 3.32e4, 3.32 × 10^4, 3.32*10^4 or a whole calculation like 6.626e-34*2.998e8/486.1e-9. On a phone, the E and − buttons add those to the number pad, and abc switches to the full keyboard for ( ) ^ * /."));
   const filters = el("div", { class: "filters" });
   const status = store.get("probs", {});
   [["all", "All"], ["Ch3", "Ch 3"], ["Ch4", "Ch 4"], ["Ch5", "Ch 5"], ["Ch6", "Ch 6"], ["redo", "Redo list"]].forEach(([k, t]) => {
@@ -712,7 +802,7 @@ DRILLS.acids = { name: "Strong or weak", ch: "Ch 4", run: mcDrill(() => {
 VIEWS.drills = main => {
   const id = location.hash.split("/")[1];
   main.appendChild(el("h1", {}, "Drills"));
-  main.appendChild(el("p", { class: "lead" }, "Random questions, as many as you want. Number answers are graded for value, sig figs and unit. Type powers of ten with an E, like 6.02e-23."));
+  main.appendChild(el("p", { class: "lead" }, "Random questions, as many as you want. Number answers are graded for value, sig figs and unit. Type 6.02e-23, 6.02 × 10^-23 or a whole calculation. Tap abc for the full keyboard."));
   const tabs = el("div", { class: "filters" });
   Object.entries(DRILLS).forEach(([k, d]) => tabs.appendChild(el("a", { class: "chip" + (k === id ? " on" : ""), href: "#drills/" + k }, `${d.name} <small>${d.ch}</small>`)));
   main.appendChild(tabs);
@@ -749,4 +839,4 @@ document.addEventListener("DOMContentLoaded", () => {
   route();
 });
 
-if (typeof module !== "undefined") module.exports = { parseNumber, sigFigs, fmtSci, parseConfig, sameConfig, ionConfig, formatConfig, normText, normUnit, gradeNumber, R };
+if (typeof module !== "undefined") module.exports = { evalExpr, normalizeMath, parseNumber, sigFigs, fmtSci, parseConfig, sameConfig, ionConfig, formatConfig, normText, normUnit, gradeNumber, R };
