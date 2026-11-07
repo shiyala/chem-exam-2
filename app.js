@@ -586,8 +586,6 @@ VIEWS.habits = main => {
   });
   main.appendChild(ul);
   main.appendChild(el("p", { class: "muted" }, "These boxes reset each time on purpose: tick through them for each problem."));
-  const pc = el("section", { class: "card" }, `<h2>Physical vs chemical, the one-line test</h2><p>Still the same substance afterward: <b>physical</b> (color, density, melting and boiling point, state, solubility). Became something new: <b>chemical</b> (flammable, rusts, reacts with water or air, tarnishes).</p><a class="btn small" href="#drills/physchem">Drill it</a>`);
-  main.appendChild(pc);
 };
 
 /* Study lists */
@@ -771,21 +769,6 @@ function inputDrill(gen) {
     box.appendChild(sol);
   };
 }
-
-const PHYSCHEM = [
-  ["Iron rusts in moist air.", "Chemical"], ["Gasoline is flammable.", "Chemical"], ["Copper conducts electricity.", "Physical"],
-  ["Water boils at 100 °C at 1 atm.", "Physical"], ["Sodium reacts violently with water.", "Chemical"], ["Gold is yellow and shiny.", "Physical"],
-  ["Silver tarnishes black in air.", "Chemical"], ["Ethanol has a density of 0.789 g/mL.", "Physical"], ["Sugar dissolves in water.", "Physical"],
-  ["Baking soda fizzes with vinegar.", "Chemical"], ["Wood burns to ash and CO₂.", "Chemical"], ["Ice melts at 0 °C.", "Physical"],
-  ["Magnesium burns with a bright white flame.", "Chemical"], ["Aluminum can be hammered into foil.", "Physical"], ["Helium does not react with other elements.", "Chemical"],
-  ["Sodium is soft enough to cut with a knife.", "Physical"], ["Milk sours over time.", "Chemical"], ["Bromine is a red-brown liquid at 25 °C.", "Physical"],
-  ["Sodium is never found as a pure metal in nature.", "Chemical"], ["Hydrogen peroxide decomposes into water and oxygen.", "Chemical"]
-];
-DRILLS.physchem = { name: "Physical vs chemical", ch: "Exam 1 skill", run: mcDrill(() => {
-  const [s, a] = pick(PHYSCHEM);
-  return { prompt: `Physical or chemical property? <b>${s}</b>`, options: ["Physical", "Chemical"], answer: a,
-    why: a === "Chemical" ? "The substance turns into something new (or its ability/inability to react is described)." : "The substance stays the same substance." };
-}) };
 
 const SOLUBLE = [
   ["NaCl", "Soluble", "Group 1 compounds are soluble."], ["AgCl", "Insoluble", "Halides of Ag⁺, Pb²⁺, Hg₂²⁺ are insoluble."],
