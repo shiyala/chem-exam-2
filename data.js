@@ -16,7 +16,7 @@ const EXAM = {
   plan: [
     ["Thu Nov 5", "Habits checklist, then Ch 3 and Ch 4 study lists. Practice problems 1 to 9. Drills: solubility, oxidation numbers, sig figs."],
     ["Fri Nov 6", "Problems 10 to 13 (stoichiometry, titration), then the Ch 5 list and problems 14 to 19. Drills: calorimetry and molarity."],
-    ["Sat Nov 7", "Ch 6 list and problems 20 to 23. Drills: electron configurations, quantum numbers, photon energy, Bohr. Read the equation sheet."],
+    ["Sat Nov 7", "Ch 6 list and problems 20 to 23, which match the Ch 6 Part 1 homework: 20 is electromagnetic energy, 21 the Bohr model, 22 and 23 electron configurations. Do each homework section right after its problem. Work everything on the calculator you'll bring Monday. Drills: electron configurations, quantum numbers, photon energy, Bohr. Read the equation sheet."],
     ["Sun Nov 8", "Redo every problem you marked missed, then the 50-minute mock exam. The Ch 6 Part 1 homework is due by 11:59 PM."],
     ["Mon Nov 9", "Calculator, pencil, arrive early. Run the habits checklist on every answer."]
   ]
