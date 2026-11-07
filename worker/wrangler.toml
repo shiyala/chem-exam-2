@@ -17,3 +17,7 @@ GOOGLE_CLIENT_ID = "782562035216-k9locj4v844dhgsldkjjt4nv2jo7qm04.apps.googleuse
 # Claude model and limits.
 MODEL = "claude-sonnet-5-5"
 MAX_TOKENS = "8000"
+
+# Stores access requests and approved accounts. Cloudflare creates the namespace on the first deploy.
+[[kv_namespaces]]
+binding = "ACCESS"

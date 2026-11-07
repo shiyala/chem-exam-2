@@ -103,8 +103,125 @@
     main.appendChild(el("p", { class: "lead" }, "Ask about any Exam 2 topic, or a problem you're stuck on. Claude can make mistakes, so check answers against your notes and the equation sheet."));
     const tok = readToken();
     if (!tok) { signInCard(main); return; }
-    chatView(main, tok);
+    const wait = el("p", { class: "muted" }, "Checking your access…");
+    main.appendChild(wait);
+    api("/me", tok).then(({ res, data }) => {
+      wait.remove();
+      if (res.status === 401) { ss.del(TOKEN_KEY); signInCard(main, "Your sign-in expired. Sign in again."); return; }
+      if (!res.ok) { main.appendChild(el("p", { class: "feedback bad" }, esc(data.error || "The server didn't answer. Try again in a moment."))); return; }
+      if (!data.allowed) { accessCard(main, tok, data); return; }
+      if (data.admin && data.requestsEnabled) adminPanel(main, tok, data.requests || 0);
+      chatView(main, tok);
+    }).catch(() => { wait.textContent = "Couldn't reach the server. Check your connection and reload."; });
   };
+
+  /* ---------- server calls ---------- */
+  const endpoint = path => CFG.workerUrl.replace(/\/+$/, "") + path;
+  async function api(path, tok, body) {
+    const res = await fetch(endpoint(path), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok.token },
+      body: JSON.stringify(body || {})
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    return { res, data };
+  }
+  function signOutButton(label) {
+    return el("button", { class: "btn ghost small", type: "button", onclick: () => {
+      ss.del(TOKEN_KEY);
+      try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {}
+      route();
+    } }, label || "Sign out");
+  }
+
+  /* ---------- request access (accounts that aren't on the list) ---------- */
+  function accessCard(main, tok, me) {
+    const card = el("section", { class: "card" });
+    card.appendChild(el("p", {}, `<b>${esc(tok.email)}</b> doesn't have access to Ask Claude yet.`));
+    const msg = el("p", { class: "feedback", "aria-live": "polite" });
+    const row = el("div", { class: "lv-actions" });
+    if (me && me.requested) {
+      msg.className = "feedback good";
+      msg.textContent = "Your request is in. You'll be able to ask questions once the site owner approves it.";
+      card.appendChild(msg);
+      row.appendChild(el("button", { class: "btn", type: "button", onclick: () => route() }, "Check again"));
+    } else if (me && me.requestsEnabled === false) {
+      card.appendChild(el("p", { class: "muted" }, "Ask the site owner to add your Google account."));
+    } else {
+      const ta = el("textarea", { rows: "2", maxlength: "300", placeholder: "Optional note for the site owner, like who you are", "aria-label": "Note with your request" });
+      card.appendChild(ta);
+      const go = el("button", { class: "btn", type: "button" }, "Request access");
+      go.addEventListener("click", async () => {
+        go.disabled = true; msg.className = "feedback"; msg.textContent = "Sending…";
+        try {
+          const { res, data } = await api("/request", tok, { note: ta.value.trim() });
+          if (res.status === 401) { ss.del(TOKEN_KEY); route(); return; }
+          if (data.allowed) { route(); return; }
+          if (!res.ok) { msg.className = "feedback bad"; msg.textContent = data.error || "That didn't go through. Try again."; go.disabled = false; return; }
+          ta.remove(); go.remove();
+          msg.className = "feedback good";
+          msg.textContent = "Request sent. You'll be able to ask questions once the site owner approves it.";
+        } catch (e) { msg.className = "feedback bad"; msg.textContent = "Couldn't reach the server. Try again."; go.disabled = false; }
+      });
+      row.appendChild(go);
+      card.appendChild(msg);
+    }
+    row.appendChild(signOutButton("Use another account"));
+    card.appendChild(row);
+    main.appendChild(card);
+  }
+
+  /* ---------- owner's panel: approve or deny requests ---------- */
+  function adminPanel(main, tok, count) {
+    const box = el("details", { class: "card admin" });
+    if (count) box.open = true;
+    const sum = el("summary", {}, `Access requests${count ? ` <span class="badge">${count}</span>` : ""}`);
+    box.appendChild(sum);
+    const body = el("div");
+    box.appendChild(body);
+    main.appendChild(box);
+    let loaded = false;
+    const load = async () => {
+      body.innerHTML = "<p class='muted small'>Loading…</p>";
+      try {
+        const { res, data } = await api("/admin", tok);
+        if (!res.ok) { body.innerHTML = `<p class="feedback bad">${esc(data.error || "Couldn't load requests.")}</p>`; return; }
+        loaded = true;
+        body.innerHTML = "";
+        body.appendChild(el("h3", {}, "Waiting"));
+        if (!data.pending.length) body.appendChild(el("p", { class: "muted small" }, "No one is waiting."));
+        data.pending.forEach(r => body.appendChild(row(r, [["Approve", "approve", "btn small"], ["Deny", "deny", "btn ghost small"]])));
+        body.appendChild(el("h3", {}, "Approved"));
+        if (!data.approved.length) body.appendChild(el("p", { class: "muted small" }, "Only the accounts in the server settings so far."));
+        data.approved.forEach(r => body.appendChild(row(r, [["Remove", "remove", "btn ghost small"]])));
+        const n = data.pending.length;
+        sum.innerHTML = `Access requests${n ? ` <span class="badge">${n}</span>` : ""}`;
+      } catch (e) { body.innerHTML = "<p class='feedback bad'>Couldn't reach the server.</p>"; }
+    };
+    function row(r, buttons) {
+      const d = el("div", { class: "req" });
+      const who = el("div", { class: "req-who" }, `<b>${esc(r.name || r.email)}</b>${r.name ? `<br><span class="small muted">${esc(r.email)}</span>` : ""}${r.note ? `<br><span class="small">“${esc(r.note)}”</span>` : ""}`);
+      const acts = el("div", { class: "req-acts" });
+      buttons.forEach(([label, decision, cls]) => {
+        const b = el("button", { class: cls, type: "button" }, label);
+        b.addEventListener("click", async () => {
+          acts.querySelectorAll("button").forEach(x => x.disabled = true);
+          try {
+            const { res, data } = await api("/admin/decide", tok, { email: r.email, decision });
+            if (!res.ok) { alertLine(d, data.error || "That didn't work."); acts.querySelectorAll("button").forEach(x => x.disabled = false); return; }
+            load();
+          } catch (e) { alertLine(d, "Couldn't reach the server."); acts.querySelectorAll("button").forEach(x => x.disabled = false); }
+        });
+        acts.appendChild(b);
+      });
+      d.appendChild(who); d.appendChild(acts);
+      return d;
+    }
+    const alertLine = (d, t) => { let p = d.querySelector(".feedback"); if (!p) { p = el("p", { class: "feedback bad small" }); d.appendChild(p); } p.textContent = t; };
+    box.addEventListener("toggle", () => { if (box.open && !loaded) load(); });
+    if (box.open) load();
+  }
 
   function signInCard(main, note) {
     const card = el("section", { class: "card center" });
@@ -131,7 +248,7 @@
     const bar = el("div", { class: "ask-bar small muted" });
     bar.appendChild(el("span", {}, "Signed in as " + esc(tok.email)));
     const newBtn = el("button", { class: "btn ghost small", type: "button" }, "New chat");
-    const outBtn = el("button", { class: "btn ghost small", type: "button" }, "Sign out");
+    const outBtn = signOutButton();
     bar.appendChild(newBtn); bar.appendChild(outBtn);
     main.appendChild(bar);
 
@@ -168,11 +285,6 @@
     renderAll(); showChip();
 
     newBtn.addEventListener("click", () => { chat = []; ss.del(CHAT_KEY); ctx = null; ss.del(CTX_KEY); renderAll(); showChip(); ta.value = ""; ta.focus(); });
-    outBtn.addEventListener("click", () => {
-      ss.del(TOKEN_KEY);
-      try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {}
-      route();
-    });
     ta.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); } });
 
     form.addEventListener("submit", async e => {
@@ -201,13 +313,13 @@
         if (!chat.length) renderAll();
       };
       try {
-        const res = await fetch(CFG.workerUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + t.token },
-          body: JSON.stringify({ messages: chat.map(m => ({ role: m.role, content: m.content })) })
-        });
-        let data = {};
-        try { data = await res.json(); } catch (x) {}
+        const { res, data } = await api("/", t, { messages: chat.map(m => ({ role: m.role, content: m.content })) });
+        if (res.status === 403 && data.canRequest !== undefined) {
+          undo("");
+          main.innerHTML = ""; main.appendChild(el("h1", {}, "Ask Claude"));
+          accessCard(main, t, { requestsEnabled: data.canRequest });
+          return;
+        }
         if (res.status === 401) {
           ss.del(TOKEN_KEY);
           undo("");

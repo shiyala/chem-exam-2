@@ -55,9 +55,9 @@ You'll set up three accounts. Plan on about 30 minutes at a computer.
    Then click **Deploy**.
 5. When the build finishes, open the Worker's **Settings**, then **Variables and Secrets**. Add two values, both with the type **Secret**:
    - **`ANTHROPIC_API_KEY`:** paste the key from step 2.
-   - **`ALLOWED_EMAILS`:** your Gmail address. To let more people ask, list several addresses separated by commas.
+   - **`ALLOWED_EMAILS`:** your Gmail address. These accounts are the site's owners: they can always ask, and they approve access requests. List several addresses separated by commas if needed.
    
-   Save and deploy.
+   Save and deploy. The first deploy also creates a small KV store called `ACCESS`, where access requests and approved accounts are kept.
 6. Copy the Worker's address from its overview page. It looks like `https://chem-exam-2-ask.YOUR-SUBDOMAIN.workers.dev`.
 
 ## 4. Send Claude two things
@@ -69,10 +69,16 @@ Send Claude these two values:
 
 Both are public. Claude will put them in `config.js` and `worker/wrangler.toml`, push the change, and test the sign-in. Cloudflare rebuilds the Worker on its own after each push.
 
+## Letting other people in
+
+1. In Google Cloud, open **Google Auth Platform**, then **Audience**, and click **Publish app**. Until then, only the test users listed there can sign in. With only basic sign-in (name and email), publishing needs no Google review.
+2. Anyone who signs in with an account that isn't approved sees a **Request access** button and can add a short note.
+3. You'll see **Access requests** at the top of the Ask Claude tab, with **Approve** and **Deny**. Approved accounts can ask right away, and you can remove them later. A denied account can't request again for 30 days.
+
 ## How it stays safe
 
 - **API key:** it lives only in Cloudflare's secret storage, never in the site or the repo.
-- **Who can ask:** the Worker accepts only a valid Google sign-in for this site's client ID, from an address in `ALLOWED_EMAILS`.
+- **Who can ask:** the Worker accepts only a valid Google sign-in for this site's client ID, from an address in `ALLOWED_EMAILS` or one you approved.
 - **Where requests come from:** it answers only requests from `https://shiyala.github.io`.
 - **Limits:** questions and conversations have length caps, each answer is capped at 8,000 tokens, and the spend limit in the Claude Console is your backstop.
 - **To change the model or the cap:** edit `MODEL` or `MAX_TOKENS` in `worker/wrangler.toml`.

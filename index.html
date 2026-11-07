@@ -173,6 +173,12 @@ sub, sup { line-height: 0; }
 .lv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .lv-nl tr.hl td { background: var(--warn-bg); font-weight: 700; }
 /* Ask Claude */
+.admin summary { cursor: pointer; font-weight: 700; }
+.admin h3 { font-size: 1rem; margin: 12px 0 6px; }
+.badge { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-size: 12px; text-align: center; }
+.req { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+.req-acts { display: flex; gap: 6px; }
+
 .ask-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .ask-bar span { margin-right: auto; overflow-wrap: anywhere; }
 .chat { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
@@ -216,11 +222,11 @@ sub, sup { line-height: 0; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet.</footer>
-<script src="config.js?v=10"></script>
-<script src="data.js?v=10"></script>
-<script src="app.js?v=10"></script>
-<script src="levels.js?v=10"></script>
-<script src="ask.js?v=10"></script>
+<script src="config.js?v=11"></script>
+<script src="data.js?v=11"></script>
+<script src="app.js?v=11"></script>
+<script src="levels.js?v=11"></script>
+<script src="ask.js?v=11"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");

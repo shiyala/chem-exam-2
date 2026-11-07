@@ -6,7 +6,15 @@
  * then passes the conversation to Claude with the API key kept as a secret.
  *
  * Settings (see wrangler.toml): ALLOWED_ORIGIN, GOOGLE_CLIENT_ID, MODEL, MAX_TOKENS.
- * Secrets (Cloudflare dashboard): ANTHROPIC_API_KEY, ALLOWED_EMAILS.
+ * Secrets (Cloudflare dashboard): ANTHROPIC_API_KEY, ALLOWED_EMAILS (the admins).
+ * KV namespace ACCESS (optional): access requests and approved accounts.
+ *
+ * Routes (all POST, all need a Google ID token):
+ *   /            ask Claude (body: { messages })
+ *   /me          { email, allowed, admin, requested, requests }
+ *   /request     ask for access (body: { note })
+ *   /admin       list pending requests and approved accounts (admins only)
+ *   /admin/decide  { email, decision: "approve" | "deny" | "remove" } (admins only)
  */
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -67,13 +75,72 @@ export default {
     } catch (e) {
       return reply(401, { error: "Please sign in again.", detail: String(e.message || e) });
     }
-    const allowed = env.ALLOWED_EMAILS.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (!claims.email_verified || !allowed.includes(String(claims.email).toLowerCase())) {
-      return reply(403, { error: "This Google account isn't allowed to ask questions here." });
+    if (!claims.email_verified || !claims.email) return reply(403, { error: "This Google account has no verified email." });
+    const email = String(claims.email).toLowerCase();
+    const admins = env.ALLOWED_EMAILS.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+    const isAdmin = admins.includes(email);
+    const kv = env.ACCESS || null;
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+
+    let body = {};
+    if (path !== "/") { try { body = await request.json(); } catch { body = {}; } }
+
+    if (path === "/me") {
+      const approved = !isAdmin && kv ? !!(await kv.get("ok:" + email)) : false;
+      const requested = !isAdmin && !approved && kv ? !!(await kv.get("req:" + email)) : false;
+      const out = { email, admin: isAdmin, allowed: isAdmin || approved, requested, requestsEnabled: !!kv };
+      if (isAdmin && kv) out.requests = (await kv.list({ prefix: "req:" })).keys.length;
+      return reply(200, out);
+    }
+
+    if (path === "/request") {
+      if (!kv) return reply(503, { error: "Access requests aren't switched on yet." });
+      if (isAdmin || await kv.get("ok:" + email)) return reply(200, { ok: true, allowed: true });
+      if (await kv.get("no:" + email)) return reply(403, { error: "This request was declined." });
+      if (await kv.get("req:" + email)) return reply(200, { ok: true, requested: true });
+      const pending = await kv.list({ prefix: "req:", limit: 200 });
+      if (pending.keys.length >= 200) return reply(429, { error: "Too many requests are waiting. Try again later." });
+      const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) : "";
+      const rec = { email, name: String(claims.name || "").slice(0, 80), note, at: new Date().toISOString() };
+      while (new TextEncoder().encode(JSON.stringify(rec)).length > 1000) rec.note = rec.note.slice(0, -10);
+      await kv.put("req:" + email, JSON.stringify(rec), { metadata: rec });
+      return reply(200, { ok: true, requested: true });
+    }
+
+    if (path === "/admin" || path === "/admin/decide") {
+      if (!isAdmin) return reply(403, { error: "Only the site owner can do that." });
+      if (!kv) return reply(503, { error: "Access requests aren't switched on yet." });
+      if (path === "/admin") {
+        const [req, ok] = await Promise.all([kv.list({ prefix: "req:" }), kv.list({ prefix: "ok:" })]);
+        const rows = list => list.keys.map(k => ({ email: k.name.slice(k.name.indexOf(":") + 1), ...(k.metadata || {}) }));
+        return reply(200, { pending: rows(req), approved: rows(ok) });
+      }
+      const who = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      if (!/^[^\s@]+@[^\s@]+$/.test(who) || who.length > 200) return reply(400, { error: "Pick an account." });
+      const decision = body.decision;
+      if (decision === "approve") {
+        const prev = await kv.getWithMetadata("req:" + who);
+        const meta = { ...(prev.metadata || {}), email: who, approvedAt: new Date().toISOString() };
+        await kv.put("ok:" + who, JSON.stringify(meta), { metadata: meta });
+        await kv.delete("req:" + who);
+        await kv.delete("no:" + who);
+      } else if (decision === "deny") {
+        await kv.delete("req:" + who);
+        await kv.put("no:" + who, "1", { expirationTtl: 60 * 60 * 24 * 30 });
+      } else if (decision === "remove") {
+        await kv.delete("ok:" + who);
+      } else {
+        return reply(400, { error: "Unknown decision." });
+      }
+      return reply(200, { ok: true });
+    }
+
+    if (path !== "/") return reply(404, { error: "Not found." });
+    if (!isAdmin && !(kv && await kv.get("ok:" + email))) {
+      return reply(403, { error: "This Google account doesn't have access yet.", canRequest: !!kv });
     }
 
     // 2. Check the conversation.
-    let body;
     try { body = await request.json(); } catch { return reply(400, { error: "Send JSON." }); }
     const messages = cleanMessages(body && body.messages);
     if (!messages) return reply(400, { error: "That conversation is empty or too long. Start a new chat." });
