@@ -13,7 +13,7 @@ keep_vars = true
 # The site allowed to call this Worker.
 ALLOWED_ORIGIN = "https://shiyala.github.io"
 # The OAuth client ID from Google Cloud (public, safe to commit).
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "782562035216-k9locj4v844dhgsldkjjt4nv2jo7qm04.apps.googleusercontent.com"
 # Claude model and limits.
 MODEL = "claude-sonnet-5-5"
 MAX_TOKENS = "8000"

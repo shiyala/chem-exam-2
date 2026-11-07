@@ -251,6 +251,163 @@ function numKeys(inp) {
   tog.textContent = label();
   return keys;
 }
+/* Tap pad for electron configurations: noble-gas cores, subshells in filling order, electron counts, live preview. */
+const SUPDIG = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+function cfgTokens(str) {
+  const s = String(str || "");
+  const core = (s.match(/\[(He|Ne|Ar|Kr)\]/i) || [])[1];
+  const list = [];
+  const re = /(\d)\s*([spdfSPDF])\s*\^?\s*(\d*)/g;
+  let m;
+  const rest = s.replace(/\[[A-Za-z]+\]/g, " ");
+  while ((m = re.exec(rest))) list.push({ sh: m[1] + m[2].toLowerCase(), n: m[3] === "" ? null : parseInt(m[3], 10) });
+  return { core: core ? core[0].toUpperCase() + core.slice(1).toLowerCase() : null, list };
+}
+function cfgText(st) {
+  return [st.core ? "[" + st.core + "]" : "", ...st.list.map(t => t.sh + (t.n == null ? "" : t.n))].filter(Boolean).join(" ");
+}
+/* Small periodic table (Z 1-54) that lights up the cells for the subshells in a configuration. */
+const PT_SYMS = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe".split(" ");
+function ptPos(z) {
+  if (z === 1) return [1, 1];
+  if (z === 2) return [1, 18];
+  const starts = [[3, 2], [11, 3], [19, 4], [37, 5]];
+  let per = 2, z0 = 3;
+  starts.forEach(([a, p]) => { if (z >= a) { per = p; z0 = a; } });
+  const i = z - z0;
+  if (per <= 3) return [per, i < 2 ? i + 1 : i + 11];
+  return [per, i + 1];
+}
+/* Cells (in fill order) that belong to one subshell. */
+function ptBlock(sh) {
+  const n = +sh[0], l = sh[1];
+  if (sh === "1s") return [1, 2];
+  const zs = [];
+  for (let z = 1; z <= 54; z++) {
+    const [per, g] = ptPos(z);
+    if (l === "s" && per === n && g <= 2) zs.push(z);
+    if (l === "p" && per === n && g >= 13) zs.push(z);
+    if (l === "d" && per === n + 1 && g >= 3 && g <= 12) zs.push(z);
+  }
+  return zs;
+}
+function miniTable() {
+  const box = el("div", { class: "pt" });
+  const grid = el("div", { class: "pt-grid", role: "img", "aria-label": "Periodic table showing the filled subshells" });
+  const cells = {};
+  for (let z = 1; z <= 54; z++) {
+    const [per, g] = ptPos(z);
+    const blk = g <= 2 || z === 2 ? "s" : g >= 13 ? "p" : "d";
+    const c = el("button", { class: "pt-cell b-" + blk, type: "button", tabindex: "-1", title: PT_SYMS[z - 1] + ", Z = " + z, style: `grid-row:${per};grid-column:${g}` }, PT_SYMS[z - 1]);
+    c.addEventListener("pointerdown", e => e.preventDefault());
+    cells[z] = c; grid.appendChild(c);
+  }
+  const capDefault = 'Tap an element for its Z. <span class="pt-key b-s">s</span> <span class="pt-key b-p">p</span> <span class="pt-key b-d">d</span> blocks';
+  const cap = el("div", { class: "pt-cap small muted" }, capDefault);
+  Object.entries(cells).forEach(([z, c]) => c.addEventListener("click", () => {
+    const blk = c.classList.contains("b-s") ? "s" : c.classList.contains("b-p") ? "p" : "d";
+    cap.textContent = PT_SYMS[z - 1] + ": Z = " + z + ", in the " + blk + " block (period " + ptPos(+z)[0] + ").";
+  }));
+  box.appendChild(grid); box.appendChild(cap);
+  box.update = (st) => {
+    Object.values(cells).forEach(c => c.classList.remove("core", "fill", "over", "last"));
+    if (st.core) for (let z = 1; z <= CORES[st.core]; z++) cells[z].classList.add("core");
+    let last = null;
+    st.list.forEach(t => {
+      const zs = ptBlock(t.sh), n = t.n || 0;
+      zs.slice(0, n).forEach(z => { cells[z].classList.add("fill"); last = z; });
+      if (n > zs.length && zs.length) cells[zs[zs.length - 1]].classList.add("over");
+    });
+    if (last) cells[last].classList.add("last");
+  };
+  return box;
+}
+function configPad(inp) {
+  const pad = el("div", { class: "cfgpad" });
+  const preview = el("div", { class: "cfg-preview", "aria-live": "polite" });
+  const count = el("span", { class: "cfg-count" });
+  const head = el("div", { class: "cfg-head" });
+  head.appendChild(preview); head.appendChild(count);
+  pad.appendChild(head);
+  const table = miniTable();
+  pad.appendChild(table);
+  let sel = -1;
+  const st = () => cfgTokens(inp.value);
+  const write = s => { inp.value = cfgText(s); inp.dispatchEvent(new Event("input")); };
+  const btn = (lab, aria, fn, cls) => {
+    const b = el("button", { class: "key" + (cls ? " " + cls : ""), type: "button", "aria-label": aria, tabindex: "-1" }, lab);
+    b.addEventListener("pointerdown", e => e.preventDefault());
+    b.addEventListener("mousedown", e => e.preventDefault());
+    b.addEventListener("click", () => fn(b));
+    return b;
+  };
+  const row = (name) => { const r = el("div", { class: "cfg-row" }); r.appendChild(el("span", { class: "cfg-lab" }, name)); pad.appendChild(r); return r; };
+
+  const coreRow = row("Core");
+  const coreBtns = {};
+  ["He", "Ne", "Ar", "Kr"].forEach(c => {
+    coreBtns[c] = btn("[" + c + "]", "Noble-gas core " + c, () => { const s = st(); s.core = s.core === c ? null : c; write(s); }, "core");
+    coreRow.appendChild(coreBtns[c]);
+  });
+
+  const shRow = row("Add");
+  const shBtns = {};
+  SUBSHELLS.forEach(sh => {
+    shBtns[sh] = btn(sh, "Add subshell " + sh, () => {
+      const s = st();
+      const i = s.list.findIndex(t => t.sh === sh);
+      if (i >= 0) { sel = i; render(); return; }
+      s.list.push({ sh, n: CAP[sh[1]] });
+      sel = s.list.length - 1;
+      write(s);
+    }, "sh");
+    shRow.appendChild(shBtns[sh]);
+  });
+
+  const nRow = row("e⁻");
+  const nBtns = [];
+  for (let k = 1; k <= 10; k++) {
+    const b = btn(String(k), k + " electrons in the selected subshell", () => {
+      const s = st(); const i = sel >= 0 && sel < s.list.length ? sel : s.list.length - 1;
+      if (i < 0) return;
+      s.list[i].n = k; write(s);
+    }, "n");
+    nBtns.push(b); nRow.appendChild(b);
+  }
+  nRow.appendChild(btn("⌫", "Remove the selected subshell", () => {
+    const s = st(); const i = sel >= 0 && sel < s.list.length ? sel : s.list.length - 1;
+    if (i >= 0) { s.list.splice(i, 1); sel = Math.min(i, s.list.length - 1); write(s); }
+    else if (s.core) { s.core = null; write(s); }
+  }, "del"));
+  nRow.appendChild(btn("Clear", "Clear the answer", () => { sel = -1; write({ core: null, list: [] }); }, "clr"));
+
+  function render() {
+    const s = st();
+    if (sel >= s.list.length) sel = s.list.length - 1;
+    preview.innerHTML = "";
+    if (s.core) preview.appendChild(el("span", { class: "cfg-core" }, "[" + s.core + "]"));
+    s.list.forEach((t, i) => {
+      const chip = el("button", { class: "cfg-chip" + (i === (sel >= 0 ? sel : s.list.length - 1) ? " on" : "") + (t.n != null && t.n > CAP[t.sh[1]] ? " over" : ""), type: "button", tabindex: "-1", "aria-label": "Select " + t.sh },
+        t.sh + (t.n == null ? "<sup>?</sup>" : "<sup>" + t.n + "</sup>"));
+      chip.addEventListener("pointerdown", e => e.preventDefault());
+      chip.addEventListener("click", () => { sel = i; render(); });
+      preview.appendChild(chip);
+    });
+    if (!s.core && !s.list.length) preview.appendChild(el("span", { class: "muted small" }, "Tap a core and subshells below, or type."));
+    const total = (s.core ? CORES[s.core] : 0) + s.list.reduce((a, t) => a + (t.n || 0), 0);
+    count.textContent = total ? total + " e⁻" : "";
+    table.update(s);
+    Object.entries(coreBtns).forEach(([c, b]) => b.classList.toggle("on", s.core === c));
+    const coreMap = s.core ? fillConfig(CORES[s.core], 0) : {};
+    SUBSHELLS.forEach(sh => { shBtns[sh].classList.toggle("on", s.list.some(t => t.sh === sh)); shBtns[sh].classList.toggle("dim", sh in coreMap); });
+    const cur = s.list[sel >= 0 ? sel : s.list.length - 1];
+    const cap = cur ? CAP[cur.sh[1]] : 0;
+    nBtns.forEach((b, k) => { b.hidden = !cur || k + 1 > cap; b.classList.toggle("on", !!cur && cur.n === k + 1); });
+  }
+  inp.addEventListener("input", render);
+  render();
+  return pad;
+}
 function checkWidget(check, onResult) {
   const wrap = el("div", { class: "check" });
   const label = el("span", { class: "check-label" }, R(check.label || ""));
@@ -258,6 +415,7 @@ function checkWidget(check, onResult) {
   const out = el("div", { class: "feedback" });
   if (check.text || check.config) {
     const inp = el("input", { type: "text", placeholder: check.config ? "e.g. [Ar] 4s2 3d6" : "your answer", "aria-label": "answer " + (check.label || "") });
+    if (check.config) { inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off"); inp.setAttribute("spellcheck", "false"); }
     wrap.appendChild(inp);
     const btn = el("button", { class: "btn small", type: "button" }, "Check");
     const run = () => {
@@ -271,6 +429,7 @@ function checkWidget(check, onResult) {
     btn.addEventListener("click", run);
     inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
     wrap.appendChild(btn);
+    if (check.config) wrap.appendChild(configPad(inp));
   } else {
     const inp = el("input", { type: "text", inputmode: store.get("kbd", "decimal"), autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
     wrap.appendChild(inp);
@@ -751,7 +910,7 @@ DRILLS.config = { name: "Electron configurations", ch: "Ch 6", run: inputDrill((
   const label = ch === 0 ? sym : `{${sym}^${Math.abs(ch) === 1 ? "" : Math.abs(ch)}${ch > 0 ? "+" : "−"}}`;
   const ans = formatConfig(map);
   return { prompt: `Write the noble-gas electron configuration of <b>${R(label)}</b>${ch === 0 ? ` (Z = ${z})` : ""}.`, check: { label: "", config: ans },
-    sol: `<b>${config(ans)}</b>${z === 24 || z === 29 ? " (exception: half-filled or filled 3d is more stable)." : ch > 0 && z > 20 ? " (4s electrons leave before 3d)." : "."} Type it like: [Ar] 4s2 3d6.` };
+    sol: `<b>${config(ans)}</b>${z === 24 || z === 29 ? " (exception: half-filled or filled 3d is more stable)." : ch > 0 && z > 20 ? " (4s electrons leave before 3d)." : "."} Tap it in with the buttons, or type it like [Ar] 4s2 3d6.` };
 }) };
 DRILLS.qnum = { name: "Quantum numbers", ch: "Ch 6", run: mcDrill(() => {
   const n = randInt(1, 4);
