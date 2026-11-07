@@ -5,7 +5,8 @@
   /* Relative energies on a 0-100 scale. Not to scale; spacing is exaggerated so the order is easy to see. */
   const MANY = { "1s": 0, "2s": 20, "2p": 30, "3s": 42, "3p": 51, "4s": 60, "3d": 67, "4p": 75, "5s": 83, "4d": 90, "5p": 98 };
   const HYD = { 1: 0, 2: 40, 3: 64, 4: 81, 5: 94 };
-  const COL = { s: 50, p: 116, d: 216 };
+  const COL = { s: 70, p: 150, d: 282 };
+  const VBW = 440;
   const BW = 24, BH = 20, GAP = 2;
   const H = 430, Y0 = 400, K = 3.75;
   const NS = "http://www.w3.org/2000/svg";
@@ -23,7 +24,7 @@
 
   function diagram(opts = {}) {
     const wrap = el("div", { class: "lv-wrap" });
-    const svg = svgEl("svg", { viewBox: `0 0 350 ${H}`, class: "lv-svg", role: "img", "aria-label": "Orbital energy diagram" });
+    const svg = svgEl("svg", { viewBox: `0 0 ${VBW} ${H}`, class: "lv-svg", role: "img", "aria-label": "Orbital energy diagram" });
     svg.appendChild(svgEl("line", { x1: 14, y1: Y0 + 12, x2: 14, y2: 12, class: "lv-axis" }));
     svg.appendChild(svgEl("path", { d: "M8 20 L14 8 L20 20", class: "lv-axis" }));
     const ax = svgEl("text", { x: 0, y: 0, class: "lv-axlab", transform: `translate(10 ${Y0 / 2 + 40}) rotate(-90)` }); ax.textContent = "Energy";
@@ -44,6 +45,7 @@
         g.appendChild(bx);
         boxes[sh].push(bx);
       }
+      g.appendChild(shapeGlyph(sh[1], x0 + BOXES[sh[1]] * (BW + GAP) + 10, BH / 2));
       groups[sh] = g;
       svg.appendChild(g);
     });
@@ -69,6 +71,168 @@
     };
     api.setMode("m");
     return api;
+  }
+
+  /* Small orbital shape next to each row: s sphere, p dumbbell, d cloverleaf. */
+  function shapeGlyph(l, cx, cy) {
+    const g = svgEl("g", { class: "lv-shape", "aria-hidden": "true" });
+    if (l === "s") g.appendChild(svgEl("circle", { cx, cy, r: 6.5 }));
+    if (l === "p") [-1, 1].forEach(sx => g.appendChild(svgEl("ellipse", { cx: cx + sx * 5, cy, rx: 5, ry: 3.3 })));
+    if (l === "d") [45, -45].forEach(a => [-1, 1].forEach(sx => g.appendChild(svgEl("ellipse", { cx: cx + sx * 4.6, cy, rx: 4.2, ry: 2.4, transform: `rotate(${a} ${cx} ${cy})` }))));
+    g.appendChild(svgEl("circle", { cx, cy, r: 1.2, class: "lv-nuc" }));
+    return g;
+  }
+
+  /* ---- Hydrogen-like orbitals, to show how close each one gets to the nucleus ---- */
+  function laguerre(k, a, x) {
+    if (k === 0) return 1;
+    let L0 = 1, L1 = 1 + a - x;
+    for (let i = 1; i < k; i++) { const L2 = ((2 * i + 1 + a - x) * L1 - (i + a) * L0) / (i + 1); L0 = L1; L1 = L2; }
+    return L1;
+  }
+  const radCache = {};
+  /* Radial part R(r) in Bohr radii, normalized so the integral of r²R² is 1. */
+  function radial(sh) {
+    if (radCache[sh]) return radCache[sh];
+    const n = +sh[0], l = "spdf".indexOf(sh[1]);
+    const raw = r => { const rho = 2 * r / n; return Math.pow(rho, l) * Math.exp(-rho / 2) * laguerre(n - l - 1, 2 * l + 1, rho); };
+    let sum = 0; const dr = 0.02;
+    for (let r = dr / 2; r < 100; r += dr) sum += r * r * raw(r) * raw(r) * dr;
+    const k = 1 / Math.sqrt(sum);
+    return (radCache[sh] = r => k * raw(r));
+  }
+  const CORE = 3;   // "inner electrons" zone drawn on the pictures, in Bohr radii
+  const SHAPE_SETS = {
+    same: { label: "3s, 3p, 3d", orbs: ["3s", "3p", "3d"], extent: 22, xmax: 25,
+      intro: "Same shell, three shapes. What matters is how much of each one gets inside the inner electons, close to the nucleus, where the pull is strongest and nothing shields it." },
+    pair: { label: "4s vs 3d", orbs: ["4s", "3d"], extent: 34, xmax: 40,
+      intro: "Most of 4s is farther out than 3d. But 4s has small inner bumps that dip inside the inner electrons, and 3d has none." }
+  };
+  SHAPE_SETS.same.intro = SHAPE_SETS.same.intro.replace("electons", "electrons");
+  const CAPTION = {
+    same: {
+      "3s": "<b>3s:</b> dense right at the nucleus, plus two small inner rings. It gets inside the most, feels the most pull, and is lowest.",
+      "3p": "<b>3p:</b> zero at the nucleus, but a small inner lobe still gets partway in. Middle.",
+      "3d": "<b>3d:</b> zero at the nucleus and no inner lobes. It stays outside the inner electrons, is shielded the most, and is highest."
+    },
+    pair: {
+      "4s": "<b>4s:</b> its main ring is far out, but the inner rings reach in close to the nucleus. That extra pull drops 4s just below 3d.",
+      "3d": "<b>3d:</b> closer on average, but it never gets inside the inner electrons, so they shield it almost completely."
+    }
+  };
+  const PLOT_CLASS = ["lv-c1", "lv-c2", "lv-c3"];
+
+  /* Cross-section of one orbital: brighter = more likely to find the electron (log scale, so faint inner rings show). */
+  function crossSection(sh, extent, color) {
+    const N = 150;
+    const cv = el("canvas", { width: N, height: N, class: "lv-cs", role: "img", "aria-label": sh + " orbital cross-section" });
+    if (/jsdom/i.test(navigator.userAgent)) return cv;
+    const ctx = cv.getContext && cv.getContext("2d");
+    if (!ctx) return cv;
+    const R = radial(sh), l = sh[1];
+    const vals = new Float32Array(N * N);
+    let max = 0;
+    for (let py = 0; py < N; py++) for (let px = 0; px < N; px++) {
+      const x = ((px + 0.5) / N * 2 - 1) * extent, z = (1 - (py + 0.5) / N * 2) * extent;
+      const r = Math.hypot(x, z) || 1e-6;
+      const ang = l === "s" ? 1 : l === "p" ? z / r : (x * z) / (r * r);
+      const psi = R(r) * ang, v = psi * psi;
+      vals[py * N + px] = v; if (v > max) max = v;
+    }
+    const img = ctx.createImageData(N, N);
+    for (let i = 0; i < N * N; i++) {
+      const t = vals[i] > 0 ? Math.max(0, Math.min(1, 1 + Math.log10(vals[i] / max) / 3.5)) : 0;
+      img.data[i * 4] = color[0]; img.data[i * 4 + 1] = color[1]; img.data[i * 4 + 2] = color[2];
+      img.data[i * 4 + 3] = Math.round(255 * Math.pow(t, 1.4));
+    }
+    ctx.putImageData(img, 0, 0);
+    const c = N / 2, scale = N / 2 / extent;
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = "rgba(128,128,128,.9)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(c, c, CORE * scale, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = "rgba(128,128,128,1)";
+    ctx.beginPath(); ctx.arc(c, c, 2, 0, Math.PI * 2); ctx.fill();
+    return cv;
+  }
+  function cssColor(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const m = /^#?([0-9a-f]{6})$/i.exec(v);
+    if (!m) return fallback;
+    const n = parseInt(m[1], 16);
+    return [n >> 16 & 255, n >> 8 & 255, n & 255];
+  }
+
+  /* Radial probability: how likely the electron is at each distance from the nucleus. */
+  function radialPlot(orbs, xmax, zoom) {
+    const W = 340, Hh = 190, L = 36, B = 30, T = 12, Rt = 10;
+    const x1 = zoom ? 8 : xmax;
+    const P = sh => { const R = radial(sh); return r => r * r * R(r) * R(r); };
+    const fs = orbs.map(P);
+    let ymax = 0;
+    fs.forEach(f => { for (let r = 0; r <= x1; r += x1 / 400) ymax = Math.max(ymax, f(r)); });
+    ymax *= 1.08;
+    const X = r => L + (r / x1) * (W - L - Rt), Y = v => Hh - B - (v / ymax) * (Hh - B - T);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${Hh}`, class: "lv-plot", role: "img", "aria-label": "Radial probability of " + orbs.join(", ") });
+    svg.appendChild(svgEl("rect", { x: X(0), y: T, width: X(CORE) - X(0), height: Hh - B - T, class: "lv-core" }));
+    const ct = svgEl("text", { x: X(0) + 4, y: T + 12, class: "lv-plab" }); ct.textContent = zoom ? "inner electrons" : "inner";
+    svg.appendChild(ct);
+    svg.appendChild(svgEl("line", { x1: L, y1: Hh - B, x2: W - Rt, y2: Hh - B, class: "lv-axis" }));
+    svg.appendChild(svgEl("line", { x1: L, y1: Hh - B, x2: L, y2: T, class: "lv-axis" }));
+    const xl = svgEl("text", { x: (L + W) / 2, y: Hh - 8, "text-anchor": "middle", class: "lv-plab" }); xl.textContent = "distance from the nucleus →";
+    const yl = svgEl("text", { x: 0, y: 0, class: "lv-plab", transform: `translate(14 ${(Hh - B + T) / 2 + 40}) rotate(-90)` }); yl.textContent = "chance of finding it";
+    svg.appendChild(xl); svg.appendChild(yl);
+    const nuc = svgEl("text", { x: L, y: Hh - B + 14, "text-anchor": "middle", class: "lv-plab" }); nuc.textContent = "nucleus";
+    svg.appendChild(nuc);
+    fs.forEach((f, i) => {
+      let d = "";
+      for (let k = 0; k <= 300; k++) { const r = x1 * k / 300; d += (k ? "L" : "M") + X(r).toFixed(1) + " " + Math.max(T, Y(f(r))).toFixed(1); }
+      svg.appendChild(svgEl("path", { d, class: "lv-curve " + PLOT_CLASS[i] }));
+    });
+    return svg;
+  }
+
+  function shapesCard() {
+    const c = el("section", { class: "card", id: "lv-shapes" });
+    c.appendChild(el("h2", {}, "Why the spacing: look at the shapes"));
+    c.appendChild(el("p", {}, "An electron's energy depends on how strongly the nucleus pulls on it. Inner electrons block part of that pull. An orbital that reaches in close to the nucleus, inside the inner electrons, feels more of the pull and sits lower."));
+    const seg = el("div", { class: "seg", role: "group", "aria-label": "Which orbitals" });
+    const body = el("div");
+    c.appendChild(seg); c.appendChild(body);
+    let which = "same", zoom = false;
+    const btns = {};
+    Object.entries(SHAPE_SETS).forEach(([k, v]) => {
+      const b = el("button", { class: "chip", type: "button" }, v.label);
+      b.addEventListener("click", () => { which = k; render(); });
+      btns[k] = b; seg.appendChild(b);
+    });
+    function render() {
+      Object.entries(btns).forEach(([k, b]) => b.classList.toggle("on", k === which));
+      const set = SHAPE_SETS[which];
+      body.innerHTML = "";
+      body.appendChild(el("p", { class: "small muted" }, set.intro));
+      const colors = [cssColor("--accent", [47, 91, 211]), cssColor("--warn", [138, 90, 0]), cssColor("--good", [31, 122, 69])];
+      const row = el("div", { class: "lv-cs-row" });
+      set.orbs.forEach((sh, i) => {
+        const fig = el("figure", { class: "lv-cs-fig" });
+        fig.appendChild(crossSection(sh, set.extent, colors[i]));
+        fig.appendChild(el("figcaption", { class: PLOT_CLASS[i] + "-t" }, sh));
+        row.appendChild(fig);
+      });
+      body.appendChild(row);
+      body.appendChild(el("p", { class: "small muted" }, "Slices through each orbital, drawn to the same scale. The dot is the nucleus; the dashed circle marks roughly where the inner electrons are."));
+      const plotWrap = el("div", { class: "lv-plot-wrap" });
+      plotWrap.appendChild(radialPlot(set.orbs, set.xmax, zoom));
+      body.appendChild(plotWrap);
+      const legend = el("p", { class: "small lv-legend" }, set.orbs.map((sh, i) => `<span class="${PLOT_CLASS[i]}-t">━ ${sh}</span>`).join(" "));
+      const zb = el("button", { class: "btn ghost small", type: "button" }, zoom ? "Zoom out" : "Zoom in on the nucleus");
+      zb.addEventListener("click", () => { zoom = !zoom; render(); });
+      legend.appendChild(zb);
+      body.appendChild(legend);
+      const ul = el("ul", { class: "lv-caps" });
+      set.orbs.forEach(sh => ul.appendChild(el("li", {}, CAPTION[which][sh])));
+      body.appendChild(ul);
+    }
+    render();
+    return c;
   }
 
   const statesFor = map => Object.fromEntries(Object.entries(map).map(([sh, k]) => [sh, spread(sh, k)]));
@@ -108,7 +272,11 @@
     const cfgLine = el("p", { class: "lv-cfg" });
     const exNote = el("p", { class: "small lv-ex" });
     c1.appendChild(cfgLine); c1.appendChild(exNote);
+    c1.appendChild(el("p", { class: "small" }, '<a href="#levels" class="lv-jump-shapes">Why are the levels spaced like this? See the shapes ↓</a>'));
     main.appendChild(c1);
+    const sc = shapesCard();
+    main.appendChild(sc);
+    c1.querySelector(".lv-jump-shapes").addEventListener("click", e => { e.preventDefault(); sc.scrollIntoView({ behavior: "smooth", block: "start" }); });
 
     let Z = 19;
     let prev = {};

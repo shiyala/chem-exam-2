@@ -155,7 +155,23 @@ sub, sup { line-height: 0; }
 .lv-step .key:disabled { opacity: .4; }
 .lv-z { font-size: 1.05rem; }
 .lv-jumps .chip { cursor: pointer; font: inherit; }
-.lv-wrap { max-width: 440px; }
+.lv-wrap { max-width: 540px; }
+.lv-shape ellipse, .lv-shape > circle:first-child { fill: var(--accent); fill-opacity: .18; stroke: var(--accent); stroke-width: 1; }
+.lv-shape .lv-nuc { fill: var(--text); }
+.lv-cs-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; }
+.lv-cs-fig { margin: 0; flex: 1 1 90px; max-width: 170px; text-align: center; }
+.lv-cs { width: 100%; height: auto; aspect-ratio: 1; display: block; background: var(--surface-2); border-radius: 10px; }
+.lv-cs-fig figcaption { font-weight: 700; margin-top: 4px; }
+.lv-plot-wrap { max-width: 520px; margin-top: 8px; }
+.lv-plot { width: 100%; height: auto; display: block; }
+.lv-core { fill: var(--surface-2); }
+.lv-plab { fill: var(--muted); font-size: 11px; }
+.lv-curve { fill: none; stroke-width: 2.2; }
+.lv-c1 { stroke: var(--accent); } .lv-c2 { stroke: var(--warn); } .lv-c3 { stroke: var(--good); }
+.lv-c1-t { color: var(--accent); } .lv-c2-t { color: var(--warn); } .lv-c3-t { color: var(--good); }
+.lv-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-weight: 700; }
+.lv-legend .btn { margin-left: auto; font-weight: 600; }
+.lv-caps { padding-left: 18px; } .lv-caps li { margin-bottom: 6px; }
 .lv-svg { width: 100%; height: auto; display: block; }
 .lv-axis { stroke: var(--muted); stroke-width: 1.5; fill: none; }
 .lv-axlab { fill: var(--muted); font-size: 12px; }
@@ -238,11 +254,11 @@ main { padding-bottom: 88px; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet. <a href="privacy.html">Privacy</a></footer>
-<script src="config.js?v=17"></script>
-<script src="data.js?v=17"></script>
-<script src="app.js?v=17"></script>
-<script src="levels.js?v=17"></script>
-<script src="ask.js?v=17"></script>
+<script src="config.js?v=18"></script>
+<script src="data.js?v=18"></script>
+<script src="app.js?v=18"></script>
+<script src="levels.js?v=18"></script>
+<script src="ask.js?v=18"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");
