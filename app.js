@@ -233,6 +233,7 @@ function insertAt(inp, text) {
   const pos = a + text.length;
   try { inp.setSelectionRange(pos, pos); } catch (e) {}
   inp.focus();
+  inp.dispatchEvent(new Event("input"));
 }
 function numKeys(inp) {
   const keys = el("span", { class: "numkeys" });
@@ -416,8 +417,17 @@ function configPad(inp) {
   render();
   return pad;
 }
-function checkWidget(check, onResult) {
+/* saveKey: keep what was typed (and whether it was checked) so it survives a reload and syncs. */
+function savedAnswer(key) { return key ? (store.get("answers", {})[key] || null) : null; }
+function saveAnswer(key, rec) {
+  if (!key) return;
+  const all = store.get("answers", {});
+  if (!rec.v && !rec.u) delete all[key]; else all[key] = rec;
+  store.set("answers", all);
+}
+function checkWidget(check, onResult, saveKey) {
   const wrap = el("div", { class: "check" });
+  const prev = savedAnswer(saveKey);
   const label = el("span", { class: "check-label" }, R(check.label || ""));
   wrap.appendChild(label);
   const out = el("div", { class: "feedback" });
@@ -438,6 +448,14 @@ function checkWidget(check, onResult) {
     inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
     wrap.appendChild(btn);
     if (check.config) wrap.appendChild(configPad(inp));
+    if (saveKey) {
+      let checked = !!(prev && prev.c);
+      const keep = () => saveAnswer(saveKey, { v: inp.value, c: checked });
+      inp.addEventListener("input", () => { checked = false; keep(); out.className = "feedback"; out.innerHTML = ""; });
+      btn.addEventListener("click", () => { checked = !!inp.value.trim(); keep(); });
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { checked = !!inp.value.trim(); keep(); } });
+      if (prev) { inp.value = prev.v || ""; if (prev.c && inp.value.trim()) run(); }
+    }
   } else {
     const inp = el("input", { type: "text", inputmode: store.get("kbd", "decimal"), autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
     wrap.appendChild(inp);
@@ -457,6 +475,14 @@ function checkWidget(check, onResult) {
     btn.addEventListener("click", run);
     [inp, unit].forEach(x => x && x.addEventListener("keydown", e => { if (e.key === "Enter") run(); }));
     wrap.appendChild(btn);
+    if (saveKey) {
+      let checked = !!(prev && prev.c);
+      const keep = () => saveAnswer(saveKey, { v: inp.value, u: unit ? unit.value : "", c: checked });
+      [inp, unit].forEach(x => x && x.addEventListener("input", () => { checked = false; keep(); out.className = "feedback"; out.innerHTML = ""; }));
+      btn.addEventListener("click", () => { checked = !!inp.value.trim(); keep(); });
+      [inp, unit].forEach(x => x && x.addEventListener("keydown", e => { if (e.key === "Enter") { checked = !!inp.value.trim(); keep(); } }));
+      if (prev) { inp.value = prev.v || ""; if (unit) unit.value = prev.u || ""; if (prev.c && inp.value.trim()) run(); }
+    }
   }
   wrap.appendChild(out);
   return wrap;
@@ -644,7 +670,7 @@ function problemCard(p, opts = {}) {
   card.appendChild(el("div", { class: "q" }, R(p.q)));
   if (!opts.noChecks && p.checks && p.checks.length) {
     const box = el("div", { class: "checks" });
-    p.checks.forEach(c => box.appendChild(checkWidget(c)));
+    p.checks.forEach((c, i) => box.appendChild(checkWidget(c, null, opts.noSolution ? null : p.n + ":" + i)));
     card.appendChild(box);
   }
   const actions = el("div", { class: "actions" });
