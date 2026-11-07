@@ -5,8 +5,8 @@
   /* Relative energies on a 0-100 scale. Not to scale; spacing is exaggerated so the order is easy to see. */
   const MANY = { "1s": 0, "2s": 20, "2p": 30, "3s": 42, "3p": 51, "4s": 60, "3d": 67, "4p": 75, "5s": 83, "4d": 90, "5p": 98 };
   const HYD = { 1: 0, 2: 40, 3: 64, 4: 81, 5: 94 };
-  const COL = { s: 52, p: 122, d: 222 };
-  const BW = 21, BH = 19, GAP = 2;
+  const COL = { s: 50, p: 116, d: 216 };
+  const BW = 24, BH = 20, GAP = 2;
   const H = 430, Y0 = 400, K = 3.75;
   const NS = "http://www.w3.org/2000/svg";
   const MAXZ = 36;
@@ -23,7 +23,7 @@
 
   function diagram(opts = {}) {
     const wrap = el("div", { class: "lv-wrap" });
-    const svg = svgEl("svg", { viewBox: `0 0 345 ${H}`, class: "lv-svg", role: "img", "aria-label": "Orbital energy diagram" });
+    const svg = svgEl("svg", { viewBox: `0 0 350 ${H}`, class: "lv-svg", role: "img", "aria-label": "Orbital energy diagram" });
     svg.appendChild(svgEl("line", { x1: 14, y1: Y0 + 12, x2: 14, y2: 12, class: "lv-axis" }));
     svg.appendChild(svgEl("path", { d: "M8 20 L14 8 L20 20", class: "lv-axis" }));
     const ax = svgEl("text", { x: 0, y: 0, class: "lv-axlab", transform: `translate(10 ${Y0 / 2 + 40}) rotate(-90)` }); ax.textContent = "Energy";
