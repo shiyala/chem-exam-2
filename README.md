@@ -1,12 +1,12 @@
 # Chem Exam 2 Prep
 
-An interactive study site for CHM 10100 Exam 2 (Ch 3 solutions, Ch 4, Ch 5 and Ch 6).
+An interactive study site for CHM 10100 Exam 2 (Ch 3 solutions, Ch 4, Ch 5 and Ch 6 light, quantum model and electron configurations).
 
 - **Overview:** countdown, exam facts and a day-by-day plan
 - **Exam 1 review:** where the points went and how to fix each habit
 - **Study lists:** tick-off checklists per chapter, with the solubility table
-- **Practice:** 24 exam-style problems with an answer checker that grades value, sig figs and units
-- **Drills:** endless random questions (sig figs, solubility, oxidation numbers, molarity, q = mcΔT, photons, Bohr, electron configurations, quantum numbers, trends)
+- **Practice:** 23 exam-style problems with an answer checker that grades value, sig figs and units
+- **Drills:** endless random questions (sig figs, solubility, oxidation numbers, molarity, q = mcΔT, photons, Bohr, electron configurations, quantum numbers)
 - **Mock exam:** 8 problems on a 50-minute timer
 - **Flashcards** and a **formula sheet**
 

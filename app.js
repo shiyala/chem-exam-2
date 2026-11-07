@@ -372,7 +372,7 @@ VIEWS.home = main => {
   const dl = el("dl", { class: "facts" });
   EXAM.facts.forEach(([k, v]) => { dl.appendChild(el("dt", {}, k)); dl.appendChild(el("dd", {}, R(v))); });
   facts.appendChild(dl);
-  facts.appendChild(el("p", { class: "muted small" }, "From Dr. Butler's Oct 30 weekly summary email."));
+  facts.appendChild(el("p", { class: "muted small" }, "From Dr. Butler's Nov 6 weekly summary email."));
   main.appendChild(facts);
 
   const plan = el("section", { class: "card" }, "<h2>Study plan</h2>");
@@ -382,7 +382,7 @@ VIEWS.home = main => {
   main.appendChild(plan);
 
   const go = el("section", { class: "grid" });
-  [["#review", "Exam 1 review", "Where the 8 points went"], ["#practice", "Practice problems", "24 exam-style problems with an answer checker"], ["#drills", "Drills", "Endless random questions on your weak spots"], ["#mock", "Mock exam", "50-minute timed run"], ["#cards", "Flashcards", "Formulas and rules to memorize"], ["#study", "Study lists", "Checklists for every chapter"]]
+  [["#review", "Exam 1 review", "Where the 8 points went"], ["#practice", "Practice problems", PROBLEMS.length + " exam-style problems with an answer checker"], ["#drills", "Drills", "Endless random questions on your weak spots"], ["#mock", "Mock exam", "50-minute timed run"], ["#cards", "Flashcards", "Formulas and rules to memorize"], ["#study", "Study lists", "Checklists for every chapter"]]
     .forEach(([h, t, s]) => go.appendChild(el("a", { class: "tile", href: h }, `<b>${t}</b><span>${s}</span>`)));
   main.appendChild(go);
 };
@@ -766,7 +766,7 @@ DRILLS.qnum = { name: "Quantum numbers", ch: "Ch 6", run: mcDrill(() => {
 }) };
 const PERIODS = { 2: ["Li", "Be", "B", "C", "N", "O", "F"], 3: ["Na", "Mg", "Al", "Si", "P", "S", "Cl"], 4: ["K", "Ca", "Ga", "Ge", "As", "Se", "Br"] };
 const GROUPS = { "Group 1": ["Li", "Na", "K", "Rb", "Cs"], "Group 2": ["Be", "Mg", "Ca", "Sr", "Ba"], "Group 16": ["O", "S", "Se", "Te"], "Group 17": ["F", "Cl", "Br", "I"] };
-DRILLS.trends = { name: "Periodic trends", ch: "Ch 6", run: mcDrill(() => {
+const TRENDS_DRILL = { /* periodic trends: not on Exam 2 (Dr. Butler, Nov 6) */ name: "Periodic trends", ch: "Ch 6", run: mcDrill(() => {
   const prop = pick(["largest atomic radius", "smallest atomic radius", "highest first ionization energy", "lowest first ionization energy"]);
   const radius = prop.includes("radius");
   const wantBigRadius = prop === "largest atomic radius" || prop === "lowest first ionization energy";

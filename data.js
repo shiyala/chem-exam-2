@@ -8,7 +8,7 @@ const EXAM = {
   end: "2026-11-09T18:50:00Z",
   facts: [
     ["When", "Monday, Nov 9, 1:00 to 1:50 PM, in the regular class session. Arriving late gets no extra time."],
-    ["Covers", "Ch 3 (solutions only), Ch 4, Ch 5 and Ch 6. Naming, unit conversions and mole calculations from earlier chapters still apply."],
+    ["Covers", "Ch 3 (solutions only), Ch 4, Ch 5 and Ch 6 (light, the quantum mechanical model and electron configurations only; no periodic trends). Naming, unit conversions and mole calculations from earlier chapters still apply."],
     ["Format", "Open-ended, like the in-class questions and Lumen. Show your work: partial credit is given."],
     ["Equation sheet", "Provided as part of the exam (D2L > Course Information > Student Resources). Look at it before Monday."],
     ["Calculator", "Bring your own. No phone, computer or tablet, and no sharing."]
@@ -16,8 +16,8 @@ const EXAM = {
   plan: [
     ["Thu Nov 5", "Habits checklist, then Ch 3 and Ch 4 study lists. Practice problems 1 to 9. Drills: solubility, oxidation numbers, sig figs."],
     ["Fri Nov 6", "Problems 10 to 13 (stoichiometry, titration), then the Ch 5 list and problems 14 to 19. Drills: calorimetry and molarity."],
-    ["Sat Nov 7", "Ch 6 list and problems 20 to 24. Drills: electron configurations, quantum numbers, trends, light. Read the equation sheet."],
-    ["Sun Nov 8", "Redo every problem you marked missed, then the 50-minute mock exam."],
+    ["Sat Nov 7", "Ch 6 list and problems 20 to 23. Drills: electron configurations, quantum numbers, photon energy, Bohr. Read the equation sheet."],
+    ["Sun Nov 8", "Redo every problem you marked missed, then the 50-minute mock exam. The Ch 6 Part 1 homework is due by 11:59 PM."],
     ["Mon Nov 9", "Calculator, pencil, arrive early. Run the habits checklist on every answer."]
   ]
 };
@@ -109,7 +109,7 @@ const STUDY = [
       "J vs kJ: divide by 1000; never mix them in one equation."
     ]}
   ]},
-  { ch: "Ch 6", title: "Light, quantum model, configurations, trends", probs: "20–24", groups: [
+  { ch: "Ch 6", title: "Light, quantum model, configurations (no periodic trends)", probs: "20–23", groups: [
     { name: "Light and the atom", items: [
       "c = λν, c = 2.998 × 10^8 m/s. λ in meters (nm × 10^−9); ν in Hz (s^−1).",
       "E = hν = hc/λ, h = 6.626 × 10^−34 J·s. Per photon; × 6.022 × 10^23 for per mole.",
@@ -129,13 +129,6 @@ const STUDY = [
       "Exceptions: Cr = [[[Ar] 4s1 3d5]], Cu = [[[Ar] 4s1 3d10]].",
       "Cations lose electrons from the highest n first: 4s before 3d. {Fe^3+} = [[[Ar] 3d5]].",
       "Valence electrons and unpaired electrons from an orbital diagram."
-    ]},
-    { name: "Periodic trends", items: [
-      "Atomic radius: bigger down a group, smaller across a period.",
-      "Ionization energy: opposite of radius. Dips at B (after Be) and O (after N).",
-      "Successive IEs jump once the valence electrons are gone (Na: IE<sub>2</sub> ≫ IE<sub>1</sub>).",
-      "Ions: cations smaller than their atoms, anions bigger. Isoelectronic: more protons = smaller.",
-      "Electron affinity more negative across a period; metallic character rises down and to the left."
     ]}
   ]}
 ];
@@ -335,20 +328,10 @@ const PROBLEMS = [
       { label: "(d)", value: 6, sf: null, units: null, exact: true }
     ],
     hint: "Cr and Cu are the exceptions. Cations lose 4s before 3d.",
-    sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." },
-  { n: 24, ch: "Ch 6", topic: "Periodic trends",
-    q: "(a) Increasing atomic radius: Mg, Na, S, Cl.<br>(b) Increasing first ionization energy: K, Na, Li.<br>(c) Increasing radius: {Na^+}, {F^−}, {Mg^2+}, {O^2−}.<br>(d) Why is O's first ionization energy lower than N's?<br>(e) Why is Na's second ionization energy far larger than its first?<br>(f) Which is larger, Fe or {Fe^3+}?",
-    checks: [
-      { label: "(a)", text: ["Cl,S,Mg,Na"] },
-      { label: "(b)", text: ["K,Na,Li"] },
-      { label: "(c)", text: ["Mg2+,Na+,F-,O2-"] },
-      { label: "(f)", text: ["Fe"] }
-    ],
-    hint: "Isoelectronic ions: more protons = smaller.",
-    sol: "(a) <b>Cl < S < Mg < Na</b>.<br>(b) <b>K < Na < Li</b>.<br>(c) <b>{Mg^2+} < {Na^+} < {F^−} < {O^2−}</b> (all 10 electrons; 12, 11, 9, 8 protons).<br>(d) O's fourth 2p electron must pair; the repulsion makes it easier to remove. N's three 2p electrons are unpaired.<br>(e) The second electron comes from the filled 2p core, much closer to the nucleus.<br>(f) <b>Fe</b>: {Fe^3+} lost 3 electrons (including 4s) and the same 26 protons pull the rest closer." }
+    sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." }
 ];
 
-const MOCK = [5, 10, 11, 15, 18, 21, 23, 24];
+const MOCK = [5, 10, 11, 15, 18, 20, 22, 23];
 
 const FLASHCARDS = [
   ["Molarity", "M = mol solute ÷ L solution"],
@@ -383,8 +366,5 @@ const FLASHCARDS = [
   ["Hund's rule", "Fill orbitals singly before pairing"],
   ["Cr and Cu", "Cr [[[Ar] 4s1 3d5]], Cu [[[Ar] 4s1 3d10]]"],
   ["Transition metal cations", "Remove 4s electrons before 3d"],
-  ["Atomic radius trend", "Increases down a group, decreases across a period"],
-  ["Ionization energy trend", "Decreases down a group, increases across (dips at B and O)"],
-  ["Isoelectronic ions", "More protons = smaller ion"],
   ["Physical vs chemical property", "Still the same substance afterward = physical. Becomes something new = chemical."]
 ];
