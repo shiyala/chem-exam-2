@@ -146,6 +146,32 @@ sub, sup { line-height: 0; }
 .pt-cap { min-height: 1.2em; }
 .pt-key { display: inline-block; padding: 0 5px; border: 1px solid var(--border); border-radius: 3px; }
 .pt-key.b-s { box-shadow: inset 0 -2px 0 var(--accent); } .pt-key.b-p { box-shadow: inset 0 -2px 0 var(--good); } .pt-key.b-d { box-shadow: inset 0 -2px 0 var(--warn); }
+/* Energy levels page */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.seg .chip { cursor: pointer; font: inherit; }
+.lv-note { min-height: 2.6em; }
+.lv-step { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.lv-step .key { min-width: 48px; min-height: 44px; font-size: 1.3rem; }
+.lv-step .key:disabled { opacity: .4; }
+.lv-z { font-size: 1.05rem; }
+.lv-jumps .chip { cursor: pointer; font: inherit; }
+.lv-wrap { max-width: 440px; }
+.lv-svg { width: 100%; height: auto; display: block; }
+.lv-axis { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.lv-axlab { fill: var(--muted); font-size: 12px; }
+.lv-g { transition: transform .7s ease; }
+.lv-lab { fill: var(--text); font-size: 13px; font-weight: 600; }
+.lv-focus .lv-lab { fill: var(--accent); font-weight: 800; }
+.lv-box rect { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; transition: fill .3s; }
+.lv-focus .lv-box rect { stroke: var(--accent); }
+.lv-box.on rect { fill: var(--surface-2); }
+.lv-box.new rect { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 2; }
+.lv-e { fill: var(--text); font-size: 13px; font-weight: 700; pointer-events: none; }
+.lv-box { cursor: pointer; }
+.lv-cfg { font-size: 1.15rem; font-weight: 600; }
+.lv-ex { color: var(--warn); min-height: 1.2em; }
+.lv-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.lv-nl tr.hl td { background: var(--warn-bg); font-weight: 700; }
 /* Ask Claude */
 .ask-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .ask-bar span { margin-right: auto; overflow-wrap: anywhere; }
@@ -182,6 +208,7 @@ sub, sup { line-height: 0; }
     <a href="#study">Study lists</a>
     <a href="#practice">Practice</a>
     <a href="#drills">Drills</a>
+    <a href="#levels">Energy levels</a>
     <a href="#mock">Mock exam</a>
     <a href="#cards">Flashcards</a>
     <a href="#formulas">Formulas</a>
@@ -189,10 +216,11 @@ sub, sup { line-height: 0; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet.</footer>
-<script src="config.js?v=8"></script>
-<script src="data.js?v=8"></script>
-<script src="app.js?v=8"></script>
-<script src="ask.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="data.js?v=9"></script>
+<script src="app.js?v=9"></script>
+<script src="levels.js?v=9"></script>
+<script src="ask.js?v=9"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");

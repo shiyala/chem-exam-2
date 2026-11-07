@@ -309,6 +309,7 @@ function miniTable() {
     cap.textContent = PT_SYMS[z - 1] + ": Z = " + z + ", in the " + blk + " block (period " + ptPos(+z)[0] + ").";
   }));
   box.appendChild(grid); box.appendChild(cap);
+  box.appendChild(el("a", { class: "small", href: "#levels" }, "Why does 4s fill before 3d? See the energy levels"));
   box.update = (st) => {
     Object.values(cells).forEach(c => c.classList.remove("core", "fill", "over", "last"));
     if (st.core) for (let z = 1; z <= CORES[st.core]; z++) cells[z].classList.add("core");
