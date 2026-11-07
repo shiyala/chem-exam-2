@@ -1,5 +1,6 @@
-/* "Ask Claude" tab: Google sign-in, then questions go to the Worker in ASK_CONFIG.workerUrl.
- * Hidden until config.js has both a Google client ID and a Worker address. */
+/* Google sign-in for the whole site, progress sync, and Ask Claude (a panel on every page plus its own tab).
+ * Questions and progress go to the Worker in ASK_CONFIG.workerUrl.
+ * Everything here stays hidden until config.js has both a Google client ID and a Worker address. */
 "use strict";
 (function () {
   const CFG = window.ASK_CONFIG || {};
@@ -7,11 +8,19 @@
   const TOKEN_KEY = "chm101-ask-token";
   const CHAT_KEY = "chm101-ask-chat";
   const CTX_KEY = "chm101-ask-context";
+  const SIGNED_KEY = "chm101-signed-in";
+  const SYNC_KEY = "chm101-sync";
+  const DRAFT_KEY = "chm101-ask-draft";
 
   const ss = {
     get(k, d) { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
     del(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+  };
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
   };
   const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -55,17 +64,27 @@
     return d.textContent.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
   }
 
-  /* ---------- sign-in ---------- */
+  /* ---------- sign-in (site-wide) ---------- */
   function readToken() {
-    const t = ss.get(TOKEN_KEY, null);
+    let t = ls.get(TOKEN_KEY, null) || ss.get(TOKEN_KEY, null);
     if (!t || !t.token || !t.exp || t.exp * 1000 < Date.now() + 60000) return null;
     return t;
   }
   function saveCredential(cred) {
     try {
       const p = JSON.parse(decodeURIComponent(escape(atob(cred.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))));
-      ss.set(TOKEN_KEY, { token: cred, exp: p.exp, email: p.email || "" });
-    } catch (e) { ss.del(TOKEN_KEY); }
+      ls.set(TOKEN_KEY, { token: cred, exp: p.exp, email: p.email || "" });
+      ls.set(SIGNED_KEY, p.email || "1");
+    } catch (e) { ls.del(TOKEN_KEY); }
+  }
+  const authSubs = [];
+  const authChanged = () => authSubs.forEach(f => { try { f(); } catch (e) {} });
+  function dropToken() { ls.del(TOKEN_KEY); ss.del(TOKEN_KEY); syncState(ls.get(SIGNED_KEY, null) ? "expired" : "off"); }
+  function signOut() {
+    dropToken(); ls.del(SIGNED_KEY);
+    try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {}
+    syncState("off");
+    authChanged();
   }
   let gisPromise = null;
   function loadGis() {
@@ -88,32 +107,25 @@
       client_id: CFG.googleClientId,
       auto_select: true,
       cancel_on_tap_outside: false,
-      callback: (resp) => { if (resp && resp.credential) { saveCredential(resp.credential); if ((location.hash || "").startsWith("#ask")) route(); } }
+      callback: (resp) => { if (resp && resp.credential) { saveCredential(resp.credential); authChanged(); } }
     });
     gisReady = true;
   }
-
-  /* ---------- the Ask view ---------- */
-  VIEWS.ask = main => {
-    main.appendChild(el("h1", {}, "Ask Claude"));
-    if (!READY) {
-      main.appendChild(el("p", { class: "lead" }, "Ask Claude isn't set up on this site yet. Once the Google sign-in and the server are connected, this tab will let you ask about any Exam 2 topic."));
-      return;
-    }
-    main.appendChild(el("p", { class: "lead" }, "Ask about any Exam 2 topic, or a problem you're stuck on. Claude can make mistakes, so check answers against your notes and the equation sheet."));
-    const tok = readToken();
-    if (!tok) { signInCard(main); return; }
-    const wait = el("p", { class: "muted" }, "Checking your access…");
-    main.appendChild(wait);
-    api("/me", tok).then(({ res, data }) => {
-      wait.remove();
-      if (res.status === 401) { ss.del(TOKEN_KEY); signInCard(main, "Your sign-in expired. Sign in again."); return; }
-      if (!res.ok) { main.appendChild(el("p", { class: "feedback bad" }, esc(data.error || "The server didn't answer. Try again in a moment."))); return; }
-      if (!data.allowed) { accessCard(main, tok, data); return; }
-      if (data.admin && data.requestsEnabled) adminPanel(main, tok, data.requests || 0);
-      chatView(main, tok);
-    }).catch(() => { wait.textContent = "Couldn't reach the server. Check your connection and reload."; });
-  };
+  const isDark = () => document.documentElement.getAttribute("data-theme") === "dark" ||
+    (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  function gisButton(slot, err) {
+    loadGis().then(() => {
+      initGis();
+      google.accounts.id.renderButton(slot, { theme: isDark() ? "filled_black" : "outline", size: "large", text: "signin_with", shape: "pill" });
+    }).catch(() => { if (err) err.textContent = "Google sign-in didn't load. Check your connection and reload the page."; });
+  }
+  /* Someone who signed in before gets signed back in quietly when their hour-long token runs out. */
+  let silentTried = false;
+  function silentSignIn() {
+    if (silentTried || readToken() || !ls.get(SIGNED_KEY, null)) return;
+    silentTried = true;
+    loadGis().then(() => { initGis(); google.accounts.id.prompt(); }).catch(() => {});
+  }
 
   /* ---------- server calls ---------- */
   const endpoint = path => CFG.workerUrl.replace(/\/+$/, "") + path;
@@ -127,25 +139,257 @@
     try { data = await res.json(); } catch (e) {}
     return { res, data };
   }
+
+  /* ---------- progress sync ---------- */
+  // meta: { email, rev (server time of the copy we last matched), dirty (changed here since) }
+  let meta = ls.get(SYNC_KEY, {}) || {};
+  const saveMeta = () => ls.set(SYNC_KEY, meta);
+  const sync = { state: "off", at: 0, subs: [] };
+  function syncState(s) { sync.state = s; if (s === "synced") sync.at = Date.now(); sync.subs.forEach(f => { try { f(); } catch (e) {} }); }
+  let pushTimer = null, applying = false, pulling = null, lastPull = 0;
+  const isObj = x => x && typeof x === "object" && !Array.isArray(x);
+  function merge(server, local) {
+    const out = { ...server };
+    for (const k of Object.keys(local)) {
+      const a = server[k], b = local[k];
+      if (!(k in server)) out[k] = b;
+      else if (typeof a === "number" && typeof b === "number") out[k] = Math.max(a, b);
+      else if (isObj(a) && isObj(b)) {
+        const o = { ...a };
+        for (const kk of Object.keys(b)) {
+          const x = a[kk], y = b[kk];
+          o[kk] = (x === true || y === true) ? true : (x === "got" || y === "got") ? "got" : (y !== undefined ? y : x);
+        }
+        out[k] = o;
+      } else out[k] = b;
+    }
+    return out;
+  }
+  function refreshView() {
+    const a = document.activeElement;
+    if (a && /^(input|textarea|select)$/i.test(a.tagName) && document.getElementById("main").contains(a)) return;
+    if (!(location.hash || "").startsWith("#ask")) route();
+  }
+  async function pull() {
+    if (pulling) return pulling;
+    const tok = readToken();
+    if (!tok) { syncState(ls.get(SIGNED_KEY, null) ? "expired" : "off"); return; }
+    pulling = (async () => {
+      syncState("syncing");
+      try {
+        const { res, data } = await api("/progress", tok);
+        if (res.status === 401) { dropToken(); syncState("expired"); silentSignIn(); return; }
+        if (!res.ok) { syncState("error"); return; }
+        lastPull = Date.now();
+        const server = isObj(data.data) ? data.data : null;
+        const local = store.all();
+        const same = meta.email === tok.email;
+        let next;
+        if (!server) next = local;
+        else if (same && !meta.dirty) next = server;
+        else next = merge(server, local);
+        const changedHere = JSON.stringify(next) !== JSON.stringify(local);
+        const needPush = !server || JSON.stringify(next) !== JSON.stringify(server);
+        meta = { email: tok.email, rev: data.updatedAt || 0, dirty: needPush };
+        saveMeta();
+        if (changedHere) { applying = true; store.replace(next); applying = false; refreshView(); }
+        if (needPush) await push(); else syncState("synced");
+      } catch (e) { syncState("error"); }
+    })();
+    try { await pulling; } finally { pulling = null; }
+  }
+  async function push() {
+    clearTimeout(pushTimer); pushTimer = null;
+    const tok = readToken();
+    if (!tok) { syncState(ls.get(SIGNED_KEY, null) ? "expired" : "off"); silentSignIn(); return; }
+    if (meta.email !== tok.email) { await pull(); return; }   // first match up with this account's saved copy
+    syncState("syncing");
+    try {
+      const { res, data } = await api("/progress/save", tok, { data: store.all() });
+      if (res.status === 401) { dropToken(); syncState("expired"); silentSignIn(); return; }
+      if (!res.ok) { syncState("error"); return; }
+      meta.rev = data.updatedAt || Date.now(); meta.dirty = false; saveMeta();
+      syncState("synced");
+    } catch (e) { syncState("error"); }
+  }
+  store.onChange(why => {
+    if (applying) return;
+    meta.dirty = true; saveMeta();
+    if (!readToken()) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, why === "clear" ? 1500 : 15000);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!readToken()) return;
+    if (document.visibilityState === "hidden") { if (meta.dirty) push(); }
+    else if (!meta.dirty && Date.now() - lastPull > 30000) pull();
+  });
+
+  /* ---------- account button in the header ---------- */
+  function accountMenu() {
+    const bar = document.querySelector("header .bar");
+    if (!bar) return;
+    const btn = el("button", { class: "icon-btn acct-btn", type: "button", "aria-haspopup": "dialog", "aria-expanded": "false" }, "Sign in");
+    const theme = document.getElementById("theme");
+    bar.insertBefore(btn, theme || null);
+    const pop = el("div", { class: "acct-pop card", role: "dialog", "aria-label": "Account", hidden: "" });
+    document.body.appendChild(pop);
+    const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? "just now" : s < 3600 ? Math.round(s / 60) + " min ago" : Math.round(s / 3600) + " h ago"; };
+    const label = () => {
+      const tok = readToken();
+      const map = { syncing: "Saving…", synced: "✓ Saved", error: "Sync paused", expired: "Sign in", off: "Sign in" };
+      btn.textContent = tok ? (map[sync.state] === "Sign in" ? "Account" : map[sync.state]) : (ls.get(SIGNED_KEY, null) ? "Sign in again" : "Sign in");
+      btn.classList.toggle("on", !!tok);
+    };
+    const fill = () => {
+      pop.innerHTML = "";
+      const tok = readToken();
+      if (!tok) {
+        pop.appendChild(el("p", {}, "<b>Sign in with Google</b> to keep your progress across your phone and laptop, and to ask Claude."));
+        const slot = el("div", { class: "gsi-slot" }); const err = el("p", { class: "small muted" });
+        pop.appendChild(slot); pop.appendChild(err);
+        gisButton(slot, err);
+        pop.appendChild(el("p", { class: "small muted" }, "Without signing in, progress stays on this device."));
+        return;
+      }
+      pop.appendChild(el("p", { class: "small" }, "Signed in as <b>" + esc(tok.email) + "</b>"));
+      const st = { syncing: "Saving your progress…", synced: "Progress saved to your account " + ago(sync.at) + ".", error: "Couldn't reach the server. Your progress is safe on this device and will save when you're back online.", expired: "Sign in again to keep saving.", off: "" }[sync.state] || "";
+      if (st) pop.appendChild(el("p", { class: "small muted" }, st));
+      const row = el("div", { class: "lv-actions" });
+      row.appendChild(el("button", { class: "btn small", type: "button", onclick: () => { meta.dirty ? push() : pull(); } }, "Sync now"));
+      row.appendChild(el("button", { class: "btn ghost small", type: "button", onclick: () => { close(); signOut(); } }, "Sign out"));
+      pop.appendChild(row);
+    };
+    const place = () => { const r = btn.getBoundingClientRect(); pop.style.top = Math.round(r.bottom + 8) + "px"; };
+    const open = () => { fill(); place(); pop.hidden = false; btn.setAttribute("aria-expanded", "true"); };
+    const close = () => { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+    btn.addEventListener("click", e => { e.stopPropagation(); pop.hidden ? open() : close(); });
+    document.addEventListener("click", e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) close(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !pop.hidden) close(); });
+    sync.subs.push(() => { label(); if (!pop.hidden) fill(); });
+    authSubs.push(() => { label(); if (!pop.hidden) { if (readToken()) close(); else fill(); } });
+    label();
+  }
+
+  /* ---------- what's on screen, for context ---------- */
+  const CTX_SEL = ".problem, .flash, .card, article, section";
+  let lastTouched = null;
+  function extract(node) {
+    const clone = node.cloneNode(true);
+    const oi = node.querySelectorAll("input, textarea, select"), ci = clone.querySelectorAll("input, textarea, select");
+    oi.forEach((inp, i) => {
+      const c = ci[i]; if (!c) return;
+      let t;
+      if (inp.type === "checkbox" || inp.type === "radio") t = inp.checked ? "[x] " : "[ ] ";
+      else t = inp.value.trim() ? ` [typed: ${inp.value.trim()}] ` : " [blank] ";
+      c.replaceWith(document.createTextNode(t));
+    });
+    const ob = node.querySelectorAll(".mc button"), cb = clone.querySelectorAll(".mc button");
+    ob.forEach((b, i) => {
+      const c = cb[i]; if (!c) return;
+      const tag = b.classList.contains("wrong") ? " (picked, wrong)" : b.classList.contains("right") ? " (correct answer)" : "";
+      c.replaceWith(document.createTextNode(" • " + b.textContent.trim() + tag + "\n"));
+    });
+    clone.querySelectorAll("[hidden]").forEach(h => {
+      if (h.classList.contains("solution")) h.replaceWith(document.createTextNode("\n[Worked solution from the site, not opened by the student yet: " + h.textContent.trim() + "]\n"));
+      else if (h.classList.contains("hint")) h.replaceWith(document.createTextNode("\n[Hint, not opened yet: " + h.textContent.trim() + "]\n"));
+      else h.remove();
+    });
+    clone.querySelectorAll(".solution").forEach(h => h.replaceWith(document.createTextNode("\n[Worked solution, opened: " + h.textContent.trim() + "]\n")));
+    clone.querySelectorAll("button, svg, script, style, .cfgpad, .pt, .ask-chip, .gsi-slot, .side").forEach(x => x.remove());
+    return plain(clone.innerHTML);
+  }
+  function describe(node, page) {
+    if (node.classList.contains("problem")) { const h = node.querySelector("h3"); return "problem " + (h ? h.textContent.trim() : ""); }
+    if (node.classList.contains("flash")) return "this flashcard";
+    const h = node.querySelector("h2, h3");
+    if (h && h.textContent.trim()) return h.textContent.trim().slice(0, 60);
+    const t = node.textContent.trim().replace(/\s+/g, " ");
+    return t ? (t.slice(0, 50) + (t.length > 50 ? "…" : "")) : page;
+  }
+  function capture(forNode) {
+    const main = document.getElementById("main");
+    if (!main) return null;
+    const h1 = main.querySelector("h1");
+    const page = h1 ? h1.textContent.trim() : "Overview";
+    let node = forNode || null;
+    if (!node && lastTouched && main.contains(lastTouched)) node = lastTouched.closest(CTX_SEL);
+    if (node && !main.contains(node)) node = null;
+    if (!node && typeof document.elementFromPoint === "function") {
+      const hit = document.elementFromPoint(window.innerWidth / 2, window.innerHeight * 0.45);
+      if (hit && main.contains(hit)) node = hit.closest(CTX_SEL);
+    }
+    let text, label;
+    if (node && main.contains(node)) { text = extract(node); label = describe(node, page); }
+    else { text = extract(main); label = "the " + page + " page"; }
+    text = text.length > 3500 ? text.slice(0, 3500) + " …" : text;
+    return { label: label + (label.startsWith("the ") ? "" : " · " + page), text: `Page: ${page}\n${text}` };
+  }
+
+  /* ---------- Ask Claude, mounted in the tab or the panel ---------- */
+  const mounts = [];
+  let signInNote = null;
+  function mount(box, opts) {
+    if (!mounts.some(m => m.box === box)) mounts.push({ box, opts });
+    box.innerHTML = "";
+    const tok = readToken();
+    if (!tok) { signInCard(box, opts); return; }
+    const wait = el("p", { class: "muted" }, "Checking your access…");
+    box.appendChild(wait);
+    api("/me", tok).then(({ res, data }) => {
+      wait.remove();
+      if (res.status === 401) { dropToken(); signInNote = "Your sign-in expired. Sign in again."; signInCard(box, opts); return; }
+      if (!res.ok) { box.appendChild(el("p", { class: "feedback bad" }, esc(data.error || "The server didn't answer. Try again in a moment."))); return; }
+      if (!data.allowed) { accessCard(box, tok, data, opts); return; }
+      if (opts.full && data.admin && data.requestsEnabled) adminPanel(box, tok, data.requests || 0);
+      chatView(box, tok, opts);
+    }).catch(() => { wait.textContent = "Couldn't reach the server. Check your connection and try again."; });
+  }
+  authSubs.push(() => {
+    for (let i = mounts.length - 1; i >= 0; i--) {
+      if (!document.body.contains(mounts[i].box)) { mounts.splice(i, 1); continue; }
+      mount(mounts[i].box, mounts[i].opts);
+    }
+  });
+
+  VIEWS.ask = main => {
+    main.appendChild(el("h1", {}, "Ask Claude"));
+    if (!READY) {
+      main.appendChild(el("p", { class: "lead" }, "Ask Claude isn't set up on this site yet. Once the Google sign-in and the server are connected, this tab will let you ask about any Exam 2 topic."));
+      return;
+    }
+    main.appendChild(el("p", { class: "lead" }, "Ask about any Exam 2 topic, or a problem you're stuck on. On any other page, the chat icon in the bottom right brings what you're looking at into the question. Claude can make mistakes, so check answers against your notes and the equation sheet."));
+    const box = el("div");
+    main.appendChild(box);
+    mount(box, { full: true });
+  };
+
   function signOutButton(label) {
-    return el("button", { class: "btn ghost small", type: "button", onclick: () => {
-      ss.del(TOKEN_KEY);
-      try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (e) {}
-      route();
-    } }, label || "Sign out");
+    return el("button", { class: "btn ghost small", type: "button", onclick: () => signOut() }, label || "Sign out");
+  }
+
+  function signInCard(box, opts) {
+    const card = el("section", { class: "card center" });
+    if (signInNote) { card.appendChild(el("p", { class: "feedback warn" }, esc(signInNote))); signInNote = null; }
+    card.appendChild(el("p", {}, "Sign in with your Google account to ask questions. Signing in also saves your progress across devices."));
+    const slot = el("div", { class: "gsi-slot" });
+    const err = el("p", { class: "small muted" });
+    card.appendChild(slot); card.appendChild(err);
+    box.appendChild(card);
+    gisButton(slot, err);
   }
 
   /* ---------- request access (accounts that aren't on the list) ---------- */
-  function accessCard(main, tok, me) {
+  function accessCard(box, tok, me, opts) {
     const card = el("section", { class: "card" });
-    card.appendChild(el("p", {}, `<b>${esc(tok.email)}</b> doesn't have access to Ask Claude yet.`));
+    card.appendChild(el("p", {}, `<b>${esc(tok.email)}</b> doesn't have access to Ask Claude yet. Your progress still saves to this account.`));
     const msg = el("p", { class: "feedback", "aria-live": "polite" });
     const row = el("div", { class: "lv-actions" });
     if (me && me.requested) {
       msg.className = "feedback good";
       msg.textContent = "Your request is in. You'll be able to ask questions once the site owner approves it.";
       card.appendChild(msg);
-      row.appendChild(el("button", { class: "btn", type: "button", onclick: () => route() }, "Check again"));
+      row.appendChild(el("button", { class: "btn", type: "button", onclick: () => mount(box, opts) }, "Check again"));
     } else if (me && me.requestsEnabled === false) {
       card.appendChild(el("p", { class: "muted" }, "Ask the site owner to add your Google account."));
     } else {
@@ -156,8 +400,8 @@
         go.disabled = true; msg.className = "feedback"; msg.textContent = "Sending…";
         try {
           const { res, data } = await api("/request", tok, { note: ta.value.trim() });
-          if (res.status === 401) { ss.del(TOKEN_KEY); route(); return; }
-          if (data.allowed) { route(); return; }
+          if (res.status === 401) { dropToken(); mount(box, opts); return; }
+          if (data.allowed) { mount(box, opts); return; }
           if (!res.ok) { msg.className = "feedback bad"; msg.textContent = data.error || "That didn't go through. Try again."; go.disabled = false; return; }
           ta.remove(); go.remove();
           msg.className = "feedback good";
@@ -169,7 +413,7 @@
     }
     row.appendChild(signOutButton("Use another account"));
     card.appendChild(row);
-    main.appendChild(card);
+    box.appendChild(card);
   }
 
   /* ---------- owner's panel: approve or deny requests ---------- */
@@ -223,37 +467,20 @@
     if (box.open) load();
   }
 
-  function signInCard(main, note) {
-    const card = el("section", { class: "card center" });
-    if (note) card.appendChild(el("p", { class: "feedback warn" }, esc(note)));
-    card.appendChild(el("p", {}, "Sign in with your Google account to ask questions."));
-    const slot = el("div", { class: "gsi-slot" });
-    card.appendChild(slot);
-    const err = el("p", { class: "small muted" });
-    card.appendChild(err);
-    main.appendChild(card);
-    loadGis().then(() => {
-      initGis();
-      const dark = document.documentElement.getAttribute("data-theme") === "dark" ||
-        (!document.documentElement.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
-      google.accounts.id.renderButton(slot, { theme: dark ? "filled_black" : "outline", size: "large", text: "signin_with", shape: "pill" });
-      google.accounts.id.prompt();
-    }).catch(e => { err.textContent = "Google sign-in didn't load. Check your connection and reload the page."; });
-  }
-
-  function chatView(main, tok) {
+  /* ---------- the conversation ---------- */
+  function chatView(box, tok, opts) {
     let chat = ss.get(CHAT_KEY, []);
     let ctx = ss.get(CTX_KEY, null);
 
     const bar = el("div", { class: "ask-bar small muted" });
-    bar.appendChild(el("span", {}, "Signed in as " + esc(tok.email)));
+    bar.appendChild(el("span", {}, opts.full ? "Signed in as " + esc(tok.email) : ""));
     const newBtn = el("button", { class: "btn ghost small", type: "button" }, "New chat");
-    const outBtn = signOutButton();
-    bar.appendChild(newBtn); bar.appendChild(outBtn);
-    main.appendChild(bar);
+    bar.appendChild(newBtn);
+    if (opts.full) bar.appendChild(signOutButton());
+    box.appendChild(bar);
 
     const list = el("div", { class: "chat", "aria-live": "polite" });
-    main.appendChild(list);
+    box.appendChild(list);
 
     const chip = el("div", { class: "ask-chip" });
     const form = el("form", { class: "chat-form" });
@@ -261,15 +488,15 @@
     const send = el("button", { class: "btn", type: "submit" }, "Send");
     const status = el("p", { class: "small muted", role: "status" });
     form.appendChild(chip); form.appendChild(ta); form.appendChild(send);
-    main.appendChild(form); main.appendChild(status);
+    box.appendChild(form); box.appendChild(status);
 
     const showChip = () => {
       chip.innerHTML = "";
       chip.hidden = !ctx;
-      if (!ctx) return;
+      if (!ctx) { ta.placeholder = "Type a question, or paste your work and ask where it went wrong"; return; }
       chip.appendChild(el("span", {}, "About " + esc(ctx.label)));
-      chip.appendChild(el("button", { class: "chip-x", type: "button", "aria-label": "Remove problem", onclick: () => { ctx = null; ss.del(CTX_KEY); showChip(); } }, "×"));
-      if (!ta.value) ta.placeholder = "What's your question about this problem? (Leave blank to get started)";
+      chip.appendChild(el("button", { class: "chip-x", type: "button", "aria-label": "Don't include this", onclick: () => { ctx = null; ss.del(CTX_KEY); showChip(); } }, "×"));
+      if (!ta.value) ta.placeholder = "What's your question about this? (Leave blank to get help getting started)";
     };
     const bubble = (m) => {
       const b = el("div", { class: "msg " + (m.role === "user" ? "user" : "bot") });
@@ -279,12 +506,15 @@
     };
     const renderAll = () => {
       list.innerHTML = "";
-      if (!chat.length) list.appendChild(el("p", { class: "muted small" }, "Try: \"Why does Cu⁺ lose the 4s electron first?\" or \"Check my limiting reactant work: …\""));
+      if (!chat.length) list.appendChild(el("p", { class: "muted small" }, opts.full
+        ? "Try: \"Why does Cu⁺ lose the 4s electron first?\" or \"Check my limiting reactant work: …\""
+        : "Ask about what's on this page, like \"Why is my answer wrong?\" or \"Explain the second step.\""));
       chat.forEach(bubble);
     };
     renderAll(); showChip();
+    if (!opts.full && list.lastChild) list.lastChild.scrollIntoView({ block: "end" });
 
-    newBtn.addEventListener("click", () => { chat = []; ss.del(CHAT_KEY); ctx = null; ss.del(CTX_KEY); renderAll(); showChip(); ta.value = ""; ta.focus(); });
+    newBtn.addEventListener("click", () => { chat = []; ss.del(CHAT_KEY); renderAll(); showChip(); ta.value = ""; ta.focus(); });
     ta.addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); } });
 
     form.addEventListener("submit", async e => {
@@ -292,9 +522,9 @@
       let q = ta.value.trim();
       if (!q && !ctx) { ta.focus(); return; }
       const t = readToken();
-      if (!t) { main.innerHTML = ""; VIEWS.ask(main); return; }
-      if (!q) q = "Can you help me get started on this problem?";
-      const content = ctx ? `About this practice problem:\n${ctx.text}\n\nMy question: ${q}` : q;
+      if (!t) { ss.set(DRAFT_KEY, q); mount(box, opts); return; }
+      if (!q) q = "Can you help me get started on this?";
+      const content = ctx ? `Here's what I'm looking at on the study site:\n${ctx.text}\n\nMy question: ${q}` : q;
       const userMsg = { role: "user", content, shown: ctx ? `(About ${ctx.label}) ${q}` : q };
       const usedCtx = ctx;
       chat.push(userMsg);
@@ -314,18 +544,13 @@
       };
       try {
         const { res, data } = await api("/", t, { messages: chat.map(m => ({ role: m.role, content: m.content })) });
-        if (res.status === 403 && data.canRequest !== undefined) {
-          undo("");
-          main.innerHTML = ""; main.appendChild(el("h1", {}, "Ask Claude"));
-          accessCard(main, t, { requestsEnabled: data.canRequest });
-          return;
-        }
+        if (res.status === 403 && data.canRequest !== undefined) { undo(""); mount(box, opts); return; }
         if (res.status === 401) {
-          ss.del(TOKEN_KEY);
           undo("");
-          main.innerHTML = ""; main.appendChild(el("h1", {}, "Ask Claude"));
-          signInCard(main, "Your sign-in expired. Sign in again, and your question will still be in the box.");
-          ss.set("chm101-ask-draft", q);
+          dropToken();
+          ss.set(DRAFT_KEY, q);
+          signInNote = "Your sign-in expired. Sign in again, and your question will still be in the box.";
+          mount(box, opts);
           return;
         }
         if (!res.ok || !data.text) { undo(data.error || "Something went wrong. Try again."); return; }
@@ -341,18 +566,55 @@
       }
     });
 
-    const draft = ss.get("chm101-ask-draft", null);
-    if (draft) { ta.value = draft; ss.del("chm101-ask-draft"); }
+    const draft = ss.get(DRAFT_KEY, null);
+    if (draft) { ta.value = draft; ss.del(DRAFT_KEY); }
     if (!("ontouchstart" in window)) ta.focus({ preventScroll: true });
   }
 
   if (!READY) return;
 
-  /* Nav link */
+  /* ---------- wire it into the page ---------- */
+  ss.del(TOKEN_KEY);   // older versions kept the token per tab
   const nav = document.querySelector("nav");
   if (nav && !nav.querySelector('a[href="#ask"]')) nav.appendChild(el("a", { href: "#ask" }, "Ask Claude"));
+  accountMenu();
 
-  /* "Ask Claude" button on practice problems (not in the mock exam). */
+  const mainEl = document.getElementById("main");
+  if (mainEl) {
+    const note = e => { lastTouched = e.target; };
+    mainEl.addEventListener("pointerdown", note, true);
+    mainEl.addEventListener("focusin", note, true);
+  }
+
+  /* Floating button and panel */
+  const fab = el("button", { class: "ask-fab", type: "button", "aria-haspopup": "dialog", "aria-label": "Ask Claude about this page", title: "Ask Claude" },
+    '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.9 2 11.7c0 2.4 1.1 4.6 3 6.2-.2 1.3-.8 2.6-1.8 3.6 2 0 3.8-.7 5.1-1.7 1.2.4 2.4.6 3.7.6 5.5 0 10-3.9 10-8.7S17.5 3 12 3zm-4.5 10a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm4.5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z"/></svg>');
+  const panel = el("aside", { class: "ask-panel", role: "dialog", "aria-label": "Ask Claude", hidden: "" });
+  const head = el("div", { class: "ask-panel-head" }, "<b>Ask Claude</b>");
+  const x = el("button", { class: "chip-x ask-close", type: "button", "aria-label": "Close" }, "×");
+  head.appendChild(x);
+  const pbody = el("div", { class: "ask-panel-body" });
+  panel.appendChild(head); panel.appendChild(pbody);
+  document.body.appendChild(fab); document.body.appendChild(panel);
+  function openPanel(ctx) {
+    const c = ctx || capture();
+    if (c) ss.set(CTX_KEY, c); else ss.del(CTX_KEY);
+    panel.hidden = false; fab.hidden = true;
+    document.body.classList.add("ask-open");
+    mount(pbody, { full: false });
+  }
+  function closePanel() {
+    panel.hidden = true; document.body.classList.remove("ask-open");
+    const h = location.hash || "";
+    fab.hidden = h.startsWith("#ask") || h.startsWith("#mock");   // no help during the mock exam
+  }
+  fab.addEventListener("click", () => openPanel());
+  x.addEventListener("click", closePanel);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !panel.hidden) closePanel(); });
+  window.addEventListener("hashchange", closePanel);
+  closePanel();
+
+  /* "Ask Claude" on each practice problem opens the panel about that problem (not in the mock exam). */
   const baseCard = problemCard;
   problemCard = function (p, opts = {}) {
     const card = baseCard(p, opts);
@@ -360,11 +622,11 @@
     const actions = card.querySelector(".actions");
     if (actions) actions.appendChild(el("button", {
       class: "btn ghost small", type: "button",
-      onclick: () => {
-        ss.set(CTX_KEY, { label: `problem ${p.n} (${plain(p.topic)})`, text: `Problem ${p.n}, ${p.ch}: ${plain(R(p.q))}` });
-        location.hash = "#ask";
-      }
+      onclick: () => openPanel(capture(card))
     }, "Ask Claude"));
     return card;
   };
+
+  if (readToken()) pull(); else silentSignIn();
+  authSubs.push(() => { if (readToken()) pull(); });
 })();

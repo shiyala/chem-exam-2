@@ -75,6 +75,12 @@ Both are public. Claude will put them in `config.js` and `worker/wrangler.toml`,
 2. Anyone who signs in with an account that isn't approved sees a **Request access** button and can add a short note.
 3. You'll see **Access requests** at the top of the Ask Claude tab, with **Approve** and **Deny**. Approved accounts can ask right away, and you can remove them later. A denied account can't request again for 30 days.
 
+## Saving progress across devices
+
+Anyone who signs in with Google (approved for Ask Claude or not) gets their progress saved to their account: ticked study items, problems marked got it or redo, and drill counts. It saves about 15 seconds after a change and whenever the page is hidden, and loads again when they sign in on another device. The **Sign in** button in the header shows whether it's saved. Progress lives in the same KV namespace as access requests, one entry per account, capped at 50 KB.
+
+Cloudflare's free plan allows 1,000 KV writes a day across the account, which is plenty for a few students.
+
 ## How it stays safe
 
 - **API key:** it lives only in Cloudflare's secret storage, never in the site or the repo.

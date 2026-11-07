@@ -6,10 +6,17 @@ const STORE_KEY = "chm101-exam2-v1";
 const store = (() => {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { data = {}; }
+  const subs = [];
+  const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} };
+  const tell = (why) => subs.forEach(f => { try { f(why); } catch (e) {} });
   return {
     get(k, d) { return k in data ? data[k] : d; },
-    set(k, v) { data[k] = v; try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} },
-    clear() { data = {}; try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
+    set(k, v) { data[k] = v; save(); tell("set"); },
+    clear() { data = {}; try { localStorage.removeItem(STORE_KEY); } catch (e) {} tell("clear"); },
+    /* for progress sync */
+    all() { return JSON.parse(JSON.stringify(data)); },
+    replace(next) { data = next && typeof next === "object" ? next : {}; save(); },
+    onChange(f) { subs.push(f); }
   };
 })();
 

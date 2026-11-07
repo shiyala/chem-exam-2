@@ -15,6 +15,8 @@
  *   /request     ask for access (body: { note })
  *   /admin       list pending requests and approved accounts (admins only)
  *   /admin/decide  { email, decision: "approve" | "deny" | "remove" } (admins only)
+ *   /progress       read this account's saved study progress (any signed-in account)
+ *   /progress/save  { data } save it (any signed-in account; up to 50 KB)
  */
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -23,6 +25,7 @@ const GOOGLE_ISSUERS = new Set(["accounts.google.com", "https://accounts.google.
 const MAX_MESSAGES = 30;          // turns kept per request
 const MAX_CHARS_PER_MESSAGE = 6000;
 const MAX_TOTAL_CHARS = 40000;
+const MAX_PROGRESS_BYTES = 50000;
 
 const SYSTEM_PROMPT = `You are a chemistry tutor built into a study site for CHM 10100 (general chemistry) Exam 2. The student is studying on a phone, between other things, for an exam on Monday, November 9.
 
@@ -40,7 +43,9 @@ How to help:
 - Be accurate. If a question depends on a value or rule the professor may define differently (an equation sheet constant, a solubility exception), say so and tell them to check their equation sheet or notes.
 - Keep answers short enough to read on a phone. Use short paragraphs and simple lists.
 - Write plain text. Do not use LaTeX or Markdown headings. Write formulas with Unicode subscripts and superscripts (H₂SO₄, Fe³⁺, 1s² 2s² 2p⁶) and scientific notation as 6.022 × 10²³.
-- Stay on chemistry and studying for this exam. For anything else, say briefly that you are here for chem help.`;
+- Stay on chemistry and studying for this exam. For anything else, say briefly that you are here for chem help.
+
+The student often asks from a page of the study site. Then their message starts with the page name and what they are looking at: a problem, drill or card, any answers they typed, the site's feedback on them, and sometimes the site's hint or worked solution marked as not yet shown to them. Answer about that content. Do not reveal a solution they have not opened unless they ask for it; use it to make sure your help is right. If the site's feedback and your own working disagree, say so plainly.`;
 
 let certCache = { keys: null, expires: 0 };
 
@@ -91,6 +96,23 @@ export default {
       const out = { email, admin: isAdmin, allowed: isAdmin || approved, requested, requestsEnabled: !!kv };
       if (isAdmin && kv) out.requests = (await kv.list({ prefix: "req:" })).keys.length;
       return reply(200, out);
+    }
+
+    if (path === "/progress" || path === "/progress/save") {
+      if (!kv) return reply(503, { error: "Progress sync isn't switched on." });
+      if (path === "/progress") {
+        const raw = await kv.get("prog:" + email);
+        let saved = null;
+        try { saved = raw ? JSON.parse(raw) : null; } catch { saved = null; }
+        return reply(200, { data: saved && saved.data || null, updatedAt: saved && saved.updatedAt || 0 });
+      }
+      const data = body && body.data;
+      if (!data || typeof data !== "object" || Array.isArray(data)) return reply(400, { error: "Send your progress as an object." });
+      const rec = { data, updatedAt: Date.now() };
+      const text = JSON.stringify(rec);
+      if (new TextEncoder().encode(text).length > MAX_PROGRESS_BYTES) return reply(413, { error: "Progress is too large to save." });
+      await kv.put("prog:" + email, text);
+      return reply(200, { ok: true, updatedAt: rec.updatedAt });
     }
 
     if (path === "/request") {
