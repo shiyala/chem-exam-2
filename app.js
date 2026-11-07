@@ -425,8 +425,10 @@ function saveAnswer(key, rec) {
   if (!rec.v && !rec.u) delete all[key]; else all[key] = rec;
   store.set("answers", all);
 }
-function checkWidget(check, onResult, saveKey) {
+/* opts.deferred: no Check button or feedback until wrap.__grade() is called (mock exam). */
+function checkWidget(check, onResult, saveKey, opts = {}) {
   const wrap = el("div", { class: "check" });
+  const live = !opts.deferred;
   const prev = savedAnswer(saveKey);
   const label = el("span", { class: "check-label" }, R(check.label || ""));
   wrap.appendChild(label);
@@ -443,10 +445,14 @@ function checkWidget(check, onResult, saveKey) {
       out.className = "feedback " + (ok ? "good" : "bad");
       out.innerHTML = ok ? "Correct." : (inp.value.trim() ? "Not quite. Try again or open the solution." : "Type an answer first.");
       onResult && onResult(ok);
+      return ok;
     };
-    btn.addEventListener("click", run);
-    inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
-    wrap.appendChild(btn);
+    wrap.__grade = run;
+    if (live) {
+      btn.addEventListener("click", run);
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+      wrap.appendChild(btn);
+    }
     if (check.config) wrap.appendChild(configPad(inp));
     if (saveKey) {
       let checked = !!(prev && prev.c);
@@ -471,10 +477,14 @@ function checkWidget(check, onResult, saveKey) {
       out.className = "feedback " + res.cls;
       out.innerHTML = res.msg;
       onResult && onResult(res.ok);
+      return res.ok;
     };
-    btn.addEventListener("click", run);
-    [inp, unit].forEach(x => x && x.addEventListener("keydown", e => { if (e.key === "Enter") run(); }));
-    wrap.appendChild(btn);
+    wrap.__grade = run;
+    if (live) {
+      btn.addEventListener("click", run);
+      [inp, unit].forEach(x => x && x.addEventListener("keydown", e => { if (e.key === "Enter") run(); }));
+      wrap.appendChild(btn);
+    }
     if (saveKey) {
       let checked = !!(prev && prev.c);
       const keep = () => saveAnswer(saveKey, { v: inp.value, u: unit ? unit.value : "", c: checked });
@@ -670,9 +680,12 @@ function problemCard(p, opts = {}) {
   card.appendChild(el("div", { class: "q" }, R(p.q)));
   if (!opts.noChecks && p.checks && p.checks.length) {
     const box = el("div", { class: "checks" });
-    p.checks.forEach((c, i) => box.appendChild(checkWidget(c, null, opts.noSolution ? null : p.n + ":" + i)));
+    const ws = p.checks.map((c, i) => checkWidget(c, null, opts.noSolution ? null : p.n + ":" + i, { deferred: !!opts.mock }));
+    ws.forEach(w => box.appendChild(w));
     card.appendChild(box);
+    card.__grade = () => ws.map(w => w.__grade());
   }
+  if (opts.mock) card.appendChild(el("textarea", { class: "work", rows: "3", placeholder: "Your work", "aria-label": "Your work for problem " + p.n }));
   const actions = el("div", { class: "actions" });
   if (!opts.noHint && p.hint) {
     const hint = el("div", { class: "hint", hidden: "" }, R(p.hint));
@@ -708,7 +721,6 @@ VIEWS.practice = main => {
 /* Mock exam */
 VIEWS.mock = main => {
   main.appendChild(el("h1", {}, "Mock exam"));
-  main.appendChild(el("p", { class: "lead" }, "Eight problems, 50 minutes, like Monday. Use paper, your own calculator and the constants below. No hints; solutions unlock when you finish."));
   main.appendChild(el("p", { class: "muted small" }, R("Constants: c = 2.998 × 10^8 m/s, h = 6.626 × 10^−34 J·s, N<sub>A</sub> = 6.022 × 10^23 /mol, c(water) = 4.184 J/g·°C, E<sub>n</sub> = −2.179 × 10^−18 J ÷ n^2.")));
   const bar = el("div", { class: "timer-bar" });
   const timeEl = el("span", { class: "timer" }, "50:00");
@@ -718,16 +730,17 @@ VIEWS.mock = main => {
   main.appendChild(bar);
   const area = el("div", { class: "mock-area" });
   main.appendChild(area);
-  const cards = MOCK.map(n => problemCard(PROBLEMS.find(p => p.n === n), { noChecks: true, noHint: true, noSolution: true }));
+  const cards = MOCK.map(n => problemCard(PROBLEMS.find(p => p.n === n), { mock: true, noHint: true, noSolution: true }));
   let left = 50 * 60, timer = null, started = false;
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const finish = () => {
     clearInterval(timer); timer = null;
     if (!started) { cards.forEach(c => area.appendChild(c)); started = true; }
-    cards.forEach(c => c.__showSolution());
+    let right = 0, total = 0;
+    cards.forEach(c => { if (c.__grade) c.__grade().forEach(ok => { total++; if (ok) right++; }); c.__showSolution(); });
     timeEl.textContent = "Done · " + fmt(50 * 60 - left) + " used";
     startBtn.disabled = true; finishBtn.disabled = true;
-    area.prepend(el("p", { class: "callout" }, "Grade yourself against each solution: units, sig figs and signs count. Mark each problem Got it or Redo later."));
+    area.prepend(el("p", { class: "callout" }, `<b>${right} of ${total}</b> answer boxes right. Check your written work against each solution.`));
   };
   startBtn.addEventListener("click", () => {
     if (!started) { cards.forEach(c => area.appendChild(c)); started = true; }
