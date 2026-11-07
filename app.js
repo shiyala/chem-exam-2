@@ -473,6 +473,11 @@ function gradeNumber(check, raw, unitRaw) {
     const near = t !== 0 && Math.abs(v - t) / Math.abs(t) <= 0.03;
     return { ok: false, cls: "bad", msg: signOnly ? "Right size, wrong sign. Is heat leaving or entering the system?" : near ? "Close, but not quite. Did you round too early or round off a constant? Keep full calculator values until the end." : "Not quite. Check your setup, then try again or open the solution." };
   }
+  if (!fromExpr && check.sf && !check.tol && !check.exact && p.sf && !p.ambiguous) {
+    const k = Math.min(p.sf, check.sf);
+    const a = Number(v.toPrecision(k)), b = Number(t.toPrecision(k));
+    if (Math.abs(a - b) > Math.abs(b) * 1e-9) return { ok: false, cls: "bad", msg: "Close, but not quite. The last digit is off. Did you round too early or round off a constant? Keep full calculator values until the end." };
+  }
   const notes = [];
   let ok = true;
   if (fromExpr && check.sf) notes.push("Worked out from your calculation. On the exam, write the final answer as " + R(fmtSci(t, check.sf)) + " (" + check.sf + " sig figs).");
