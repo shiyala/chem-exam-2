@@ -365,6 +365,5 @@ const FLASHCARDS = [
   ["Orbitals per subshell", "s 1, p 3, d 5, f 7"],
   ["Hund's rule", "Fill orbitals singly before pairing"],
   ["Cr and Cu", "Cr [[[Ar] 4s1 3d5]], Cu [[[Ar] 4s1 3d10]]"],
-  ["Transition metal cations", "Remove 4s electrons before 3d"],
-  ["Physical vs chemical property", "Still the same substance afterward = physical. Becomes something new = chemical."]
+  ["Transition metal cations", "Remove 4s electrons before 3d"]
 ];
