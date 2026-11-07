@@ -9,5 +9,8 @@ An interactive study site for CHM 10100 Exam 2 (Ch 3 solutions, Ch 4, Ch 5 and C
 - **Drills:** endless random questions (sig figs, solubility, oxidation numbers, molarity, q = mcΔT, photons, Bohr, electron configurations, quantum numbers)
 - **Mock exam:** 8 problems on a 50-minute timer
 - **Flashcards** and a **formula sheet**
+- **Ask Claude** (optional): sign in with Google and ask Claude about any topic or practice problem. It stays hidden until it's set up; see [SETUP.md](SETUP.md).
 
 Plain HTML, CSS and JavaScript with no build step. Progress is saved in the browser's local storage.
+
+The `worker/` folder is the small Cloudflare Worker behind Ask Claude. It checks the Google sign-in and keeps the Anthropic API key out of the public site.

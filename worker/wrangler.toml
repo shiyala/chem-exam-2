@@ -1,0 +1,19 @@
+# Cloudflare Worker for the "Ask Claude" box on the Chem Exam 2 site.
+# Secrets (set in the Cloudflare dashboard, never in this file):
+#   ANTHROPIC_API_KEY  your Anthropic API key
+#   ALLOWED_EMAILS     Google accounts allowed to ask, comma-separated
+name = "chem-exam-2-ask"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+# Keep variables added in the dashboard when this file is redeployed.
+keep_vars = true
+
+[vars]
+# The site allowed to call this Worker.
+ALLOWED_ORIGIN = "https://shiyala.github.io"
+# The OAuth client ID from Google Cloud (public, safe to commit).
+GOOGLE_CLIENT_ID = ""
+# Claude model and limits.
+MODEL = "claude-sonnet-5-5"
+MAX_TOKENS = "8000"

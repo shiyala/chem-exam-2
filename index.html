@@ -118,6 +118,24 @@ sub, sup { line-height: 0; }
   h1 { font-size: 1.45rem; } .timer-bar { top: 88px; }
 }
 @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+/* Ask Claude */
+.ask-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ask-bar span { margin-right: auto; overflow-wrap: anywhere; }
+.chat { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.msg { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); max-width: 92%; overflow-wrap: anywhere; line-height: 1.5; }
+.msg.user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.msg.bot { align-self: flex-start; background: var(--surface); }
+.msg.bot p { margin: 0 0 8px; } .msg.bot p:last-child { margin-bottom: 0; }
+.msg.bot ul, .msg.bot ol { margin: 0 0 8px; padding-left: 20px; }
+.msg.bot code { background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+.msg.pending { color: var(--muted); font-style: italic; }
+.chat-form { display: flex; flex-direction: column; gap: 8px; }
+.chat-form textarea { font: inherit; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); resize: vertical; min-height: 72px; }
+.chat-form .btn { align-self: flex-end; }
+.ask-chip { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; }
+.ask-chip[hidden] { display: none; }
+.chip-x { background: none; border: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+.gsi-slot { display: flex; justify-content: center; min-height: 44px; margin: 8px 0; }
 @media print { header, .actions, .filters, footer { display: none; } .hint, .solution { display: block !important; } }
 </style>
 </head>
@@ -143,8 +161,10 @@ sub, sup { line-height: 0; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet.</footer>
-<script src="data.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="data.js?v=7"></script>
+<script src="app.js?v=7"></script>
+<script src="ask.js?v=7"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");
