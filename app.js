@@ -235,7 +235,8 @@ function insertAt(inp, text) {
   inp.focus();
   inp.dispatchEvent(new Event("input"));
 }
-function numKeys(inp) {
+/* short: plain whole-number answers (oxidation numbers, counts) only get a minus key. */
+function numKeys(inp, short) {
   const keys = el("span", { class: "numkeys" });
   const add = (lab, aria, fn, cls) => {
     const b = el("button", { class: "key" + (cls ? " " + cls : ""), type: "button", "aria-label": aria, tabindex: "-1" }, lab);
@@ -245,13 +246,14 @@ function numKeys(inp) {
     keys.appendChild(b);
     return b;
   };
-  add("E", "Insert E (times ten to the power)", () => insertAt(inp, "e"));
+  if (!short) add("E", "Insert E (times ten to the power)", () => insertAt(inp, "e"));
   add("−", "Insert minus sign", () => insertAt(inp, "-"));
+  if (short) return keys;
   const label = () => inp.getAttribute("inputmode") === "decimal" ? "abc" : "123";
   const tog = add(label(), "Switch between number pad and full keyboard", b => {
     const next = inp.getAttribute("inputmode") === "decimal" ? "text" : "decimal";
     store.set("kbd", next);
-    document.querySelectorAll("input.num").forEach(x => x.setAttribute("inputmode", next));
+    document.querySelectorAll("input.num:not(.short)").forEach(x => x.setAttribute("inputmode", next));
     document.querySelectorAll(".key.kbd").forEach(x => { x.textContent = next === "decimal" ? "abc" : "123"; });
     inp.blur();
     setTimeout(() => inp.focus(), 60);
@@ -430,8 +432,7 @@ function checkWidget(check, onResult, saveKey, opts = {}) {
   const wrap = el("div", { class: "check" });
   const live = !opts.deferred;
   const prev = savedAnswer(saveKey);
-  const label = el("span", { class: "check-label" }, R(check.label || ""));
-  wrap.appendChild(label);
+  if (check.label) wrap.appendChild(el("span", { class: "check-label" }, R(check.label)));
   const out = el("div", { class: "feedback" });
   if (check.text || check.config) {
     const inp = el("input", { type: "text", placeholder: check.config ? "e.g. [Ar] 4s2 3d6" : "your answer", "aria-label": "answer " + (check.label || "") });
@@ -463,9 +464,10 @@ function checkWidget(check, onResult, saveKey, opts = {}) {
       if (prev) { inp.value = prev.v || ""; if (prev.c && inp.value.trim()) run(); }
     }
   } else {
-    const inp = el("input", { type: "text", inputmode: store.get("kbd", "decimal"), autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num", "aria-label": "value " + (check.label || "") });
+    const short = !check.sf && !check.units;
+    const inp = el("input", { type: "text", inputmode: short ? "decimal" : store.get("kbd", "decimal"), autocomplete: "off", autocorrect: "off", autocapitalize: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.sf ? "e.g. 3.32e4 or 6.02e-23" : "number", class: "num" + (short ? " short" : ""), "aria-label": "value " + (check.label || "") });
     wrap.appendChild(inp);
-    wrap.appendChild(numKeys(inp));
+    wrap.appendChild(numKeys(inp, short));
     let unit = null;
     if (check.units) {
       unit = el("input", { type: "text", placeholder: "unit", class: "unit", "aria-label": "unit " + (check.label || "") });
@@ -811,8 +813,12 @@ function inputDrill(gen) {
     const w = checkWidget(q.check, ok => { if (ok && !counted) { counted = true; countRight(); } });
     box.appendChild(w);
     const sol = el("div", { class: "solution", hidden: "" }, R(q.sol));
-    box.appendChild(el("button", { class: "btn ghost small", type: "button", onclick: () => { sol.hidden = !sol.hidden; } }, "Show solution"));
+    const row = el("div", { class: "drill-actions" });
+    const sb = el("button", { class: "btn ghost", type: "button" }, "Show solution");
+    sb.addEventListener("click", () => { sol.hidden = !sol.hidden; sb.textContent = sol.hidden ? "Show solution" : "Hide solution"; });
+    row.appendChild(sb);
     box.appendChild(sol);
+    box.appendChild(row);
   };
 }
 
@@ -1004,9 +1010,16 @@ VIEWS.drills = main => {
   const card = el("section", { class: "card drill" });
   const box = el("div");
   const next = el("button", { class: "btn", type: "button" }, "Next question");
-  const runOne = () => { box.innerHTML = ""; DRILLS[id].run(box); const f = box.querySelector("input"); if (f) f.focus(); };
+  next.classList.add("drill-next");
+  const runOne = () => {
+    box.innerHTML = ""; DRILLS[id].run(box);
+    let row = box.querySelector(".drill-actions");
+    if (!row) { row = el("div", { class: "drill-actions" }); box.appendChild(row); }
+    row.appendChild(next);
+    const f = box.querySelector("input"); if (f) f.focus();
+  };
   next.addEventListener("click", runOne);
-  card.appendChild(el("h2", {}, DRILLS[id].name)); card.appendChild(box); card.appendChild(next);
+  card.appendChild(el("h2", {}, DRILLS[id].name)); card.appendChild(box);
   main.appendChild(card);
   runOne();
 };

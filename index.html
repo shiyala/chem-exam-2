@@ -103,7 +103,11 @@ h3 { font-size: 1.02rem; margin: 18px 0 6px; }
 .hint { border-left-color: var(--warn); }
 .solution p:first-child { margin-top: 0; } .solution p:last-child { margin-bottom: 0; }
 .mc { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
-.drill .q { font-size: 1.05rem; } .drill > .btn { margin-top: 14px; }
+.drill .q { font-size: 1.05rem; }
+.drill .check { margin: 4px 0 10px; }
+.check input.num.short { flex: 0 1 120px; }
+.drill-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.drill-actions .drill-next { margin-left: auto; }
 .timer-bar { position: sticky; top: 92px; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px; }
 .timer { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-right: auto; } .timer.low { color: var(--bad); }
 .callout { background: var(--warn-bg); color: var(--warn); padding: 10px 14px; border-radius: 10px; }
@@ -255,11 +259,11 @@ main { padding-bottom: 88px; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet. <a href="privacy.html">Privacy</a></footer>
-<script src="config.js?v=19"></script>
-<script src="data.js?v=19"></script>
-<script src="app.js?v=19"></script>
-<script src="levels.js?v=19"></script>
-<script src="ask.js?v=19"></script>
+<script src="config.js?v=20"></script>
+<script src="data.js?v=20"></script>
+<script src="app.js?v=20"></script>
+<script src="levels.js?v=20"></script>
+<script src="ask.js?v=20"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");
