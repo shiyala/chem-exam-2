@@ -331,7 +331,7 @@ const PROBLEMS = [
     sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." }
 ];
 
-const MOCK = [5, 10, 11, 15, 18, 20, 22, 23];
+const MOCK = [1, 5, 10, 11, 15, 18, 20, 22, 23];
 
 const FLASHCARDS = [
   ["Molarity", "M = mol solute ÷ L solution"],
