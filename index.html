@@ -234,7 +234,27 @@ sub, sup { line-height: 0; }
 .acct-pop[hidden] { display: none; }
 .acct-pop p { margin: 0 0 10px; }
 main { padding-bottom: 88px; }
-@media print { header, .actions, .filters, footer, .ask-fab, .ask-panel, .acct-pop { display: none; } .hint, .solution { display: block !important; } }
+.calc-fab { position: fixed; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 40; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: 0 4px 14px rgba(0,0,0,.18); display: grid; place-items: center; cursor: pointer; }
+.calc-fab.solo { bottom: calc(16px + env(safe-area-inset-bottom)); }
+.calc-fab[hidden], .calc-panel[hidden] { display: none; }
+.calc-panel { position: fixed; z-index: 44; left: 0; right: 0; bottom: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 16px 16px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); padding: 0 12px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; }
+.calc-head { display: flex; align-items: center; padding: 8px 0 0; touch-action: none; }
+.calc-head b { margin-right: auto; }
+.calc-expr { font: inherit; font-size: 18px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; box-sizing: border-box; }
+.calc-out { font-size: 20px; text-align: right; min-height: 1.4em; overflow-x: auto; white-space: nowrap; }
+.calc-out.err { color: var(--bad); font-size: 14px; }
+.calc-keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.calc-key { font: inherit; font-size: 16px; min-height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; padding: 0; }
+.calc-key.fn { background: var(--surface-2); font-size: 14px; }
+.calc-key.op { font-weight: 700; }
+.calc-key.ctl { color: var(--muted); font-size: 14px; }
+.calc-key.eq { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.calc-key:active { transform: translateY(1px); }
+.calc-use { align-self: stretch; }
+body.calc-open main { padding-bottom: 440px; }
+@media (min-width: 720px) { .calc-panel { left: auto; right: 16px; bottom: 16px; width: 320px; border-radius: 16px; } .calc-head { cursor: move; } body.calc-open main { padding-bottom: 88px; } }
+
+@media print { header, .actions, .filters, footer, .ask-fab, .ask-panel, .calc-fab, .calc-panel, .acct-pop { display: none; } .hint, .solution { display: block !important; } }
 </style>
 </head>
 <body>
@@ -260,11 +280,12 @@ main { padding-bottom: 88px; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet. <a href="privacy.html">Privacy</a></footer>
-<script src="config.js?v=22"></script>
-<script src="data.js?v=22"></script>
-<script src="app.js?v=22"></script>
-<script src="levels.js?v=22"></script>
-<script src="ask.js?v=22"></script>
+<script src="config.js?v=23"></script>
+<script src="data.js?v=23"></script>
+<script src="app.js?v=23"></script>
+<script src="levels.js?v=23"></script>
+<script src="ask.js?v=23"></script>
+<script src="calc.js?v=23"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");
