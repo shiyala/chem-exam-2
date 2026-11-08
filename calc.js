@@ -21,7 +21,7 @@
     return String(Number(m)) + "e" + Number(e);
   }
 
-  let ans = 0, justEvaluated = false, target = null;
+  let ans = 0, justEvaluated = false, target = null, lastCard = null, hasResult = false, filling = false;
 
   const fab = mk("button", { class: "calc-fab", type: "button", "aria-label": "Open calculator", title: "Calculator", hidden: "" },
     '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M7 2h10a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v3h12V5a1 1 0 0 0-1-1H7zm-1 6v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9H6zm2 2h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zm-6 4h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z"/></svg>');
@@ -60,7 +60,7 @@
     if (v == null) { out.classList.add("err"); out.textContent = "Can't work that out. Check the brackets."; return; }
     ans = v; justEvaluated = true;
     out.classList.remove("err"); out.innerHTML = "= <b>" + pretty(v) + "</b>";
-    useBtn.disabled = !target;
+    hasResult = true; refreshUse();
   }
 
   const K = [
@@ -84,18 +84,50 @@
     else if (e.key === "Escape") hide();
   });
 
-  /* Remember the answer box last used, so the result can go straight into it. */
+  /* Where the result goes: the answer box last tapped, or else the first empty box
+     of the problem last touched (or the one in view), so the button works without tapping a box first. */
+  const BOX = ".check input:not(.unit)";
+  const CARD = ".problem, .drill, .card";
   const main = document.getElementById("main");
-  if (main) main.addEventListener("focusin", e => {
-    const t = e.target;
-    if (t.matches && t.matches(".check input:not(.unit)")) { target = t; useBtn.disabled = !justEvaluated; }
-  });
+  if (main) {
+    main.addEventListener("focusin", e => { const t = e.target; if (!filling && t.matches && t.matches(BOX)) target = t; const c = t.closest && t.closest(CARD); if (c) lastCard = c; refreshUse(); });
+    main.addEventListener("pointerdown", e => { const c = e.target.closest && e.target.closest(CARD); if (c && c.querySelector(BOX)) { lastCard = c; refreshUse(); } }, true);
+  }
+  function cardInView() {
+    const limit = panel.hidden ? window.innerHeight : Math.min(window.innerHeight, panel.getBoundingClientRect().top || window.innerHeight);
+    let best = null, bestD = Infinity;
+    document.querySelectorAll("#main " + CARD).forEach(c => {
+      if (!c.querySelector(BOX)) return;
+      const r = c.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > limit) return;
+      const d = Math.abs((r.top + r.bottom) / 2 - limit / 2);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best || document.querySelector("#main " + BOX)?.closest(CARD) || null;
+  }
+  function pickTarget() {
+    if (target && document.body.contains(target)) return target;
+    const c = (lastCard && document.body.contains(lastCard)) ? lastCard : cardInView();
+    if (!c) return null;
+    const boxes = [...c.querySelectorAll(BOX)];
+    return boxes.find(b => !b.value.trim()) || boxes[0] || null;
+  }
+  function refreshUse() {
+    const t = hasResult ? pickTarget() : null;
+    useBtn.disabled = !t;
+    const lab = t && t.closest(".check")?.querySelector(".check-label");
+    useBtn.textContent = "Put in answer box" + (lab ? " " + lab.textContent.trim() : "");
+  }
   useBtn.addEventListener("click", () => {
-    if (!target || !document.body.contains(target)) { useBtn.disabled = true; return; }
-    target.value = plain(ans);
-    target.dispatchEvent(new Event("input"));
-    target.scrollIntoView({ block: "center", behavior: "smooth" });
-    target.focus();
+    const t = pickTarget();
+    if (!t) { refreshUse(); return; }
+    t.value = plain(ans);
+    t.dispatchEvent(new Event("input"));
+    target = null; lastCard = t.closest(CARD) || lastCard;   // next result goes to the next empty box
+    t.scrollIntoView({ block: "center", behavior: "smooth" });
+    t.classList.add("calc-filled"); setTimeout(() => t.classList.remove("calc-filled"), 1200);
+    if (!expr.hasAttribute("inputmode")) { filling = true; t.focus(); filling = false; }
+    refreshUse();
   });
 
   /* Drag by the header on wide screens. */
@@ -114,19 +146,19 @@
   });
   head.addEventListener("pointerup", () => { drag = null; });
 
-  function show() { panel.hidden = false; fab.hidden = true; document.body.classList.add("calc-open"); if (!expr.hasAttribute("inputmode")) expr.focus(); }
+  function show() { refreshUse(); panel.hidden = false; fab.hidden = true; document.body.classList.add("calc-open"); if (!expr.hasAttribute("inputmode")) expr.focus(); }
   function hide() { panel.hidden = true; document.body.classList.remove("calc-open"); sync(); }
   function sync() {
     const here = onPage();
     if (!here) { panel.hidden = true; document.body.classList.remove("calc-open"); }
     fab.hidden = !here || !panel.hidden;
     fab.classList.toggle("solo", (location.hash || "").startsWith("#mock"));
-    target = null; useBtn.disabled = true;
+    target = null; lastCard = null; refreshUse();
   }
   fab.addEventListener("click", show);
   close.addEventListener("click", hide);
   document.body.append(fab, panel);
   window.addEventListener("hashchange", sync);
   sync();
-  window.__calc = { show, hide, insert, equals, expr, out, useBtn, fab, panel };
+  window.__calc = { pickTarget, show, hide, insert, equals, expr, out, useBtn, fab, panel };
 })();
