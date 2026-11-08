@@ -331,7 +331,84 @@ const PROBLEMS = [
     sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." }
 ];
 
-const MOCK = [1, 5, 10, 11, 15, 18, 20, 22, 23];
+/* Mock exam: fresh problems, not in Practice. Same scope as Exam 2 (Ch 3 solutions through Ch 6, no periodic trends). */
+const MOCK_PROBLEMS = [
+  { n: "M1", num: 1, ch: "Ch 3", topic: "Molarity and dilution",
+    q: "3.75 g of {K2SO4} (174.26 g/mol) is dissolved in water to make 200.0 mL of solution.<br>(a) What is the molarity of {K2SO4}?<br>(b) What is the molarity of {K^+} ions?<br>(c) 50.0 mL of this solution is diluted to 250.0 mL. What is the new molarity of {K2SO4}?",
+    checks: [
+      { label: "(a)", value: 0.108, sf: 3, units: ["M", "mol/L"] },
+      { label: "(b) K+", value: 0.215, sf: 3, units: ["M", "mol/L"] },
+      { label: "(c)", value: 0.0215, sf: 3, units: ["M", "mol/L"] }
+    ],
+    sol: "(a) 3.75 g ÷ 174.26 g/mol = 0.02152 mol. 0.02152 mol ÷ 0.2000 L = <b>0.108 M</b>.<br>(b) Each {K2SO4} gives 2 {K^+}: 2 × 0.1076 = <b>0.215 M</b>.<br>(c) M₁V₁ = M₂V₂: 0.1076 M × 50.0 mL ÷ 250.0 mL = <b>0.0215 M</b>." },
+  { n: "M2", num: 2, ch: "Ch 4", topic: "Precipitation, net ionic",
+    q: "For each pair of aqueous solutions, write the balanced molecular, complete ionic and net ionic equations, or write NR. Name any precipitate.<br>(a) barium chloride + sodium sulfate<br>(b) silver nitrate + calcium chloride<br>(c) potassium chloride + ammonium nitrate",
+    checks: [
+      { label: "(a) precipitate formula", text: ["BaSO4"] },
+      { label: "(b) precipitate formula", text: ["AgCl"] },
+      { label: "(c) reaction or NR?", text: ["NR", "no reaction"] }
+    ],
+    sol: "(a) {BaCl2}(aq) + {Na2SO4}(aq) → {BaSO4}(s) + 2{NaCl}(aq)<br>Complete: {Ba^2+} + 2{Cl^−} + 2{Na^+} + {SO4^2−} → {BaSO4}(s) + 2{Na^+} + 2{Cl^−}<br>Net: <b>{Ba^2+}(aq) + {SO4^2−}(aq) → {BaSO4}(s)</b>, barium sulfate.<br><br>(b) 2{AgNO3}(aq) + {CaCl2}(aq) → 2{AgCl}(s) + {Ca(NO3)2}(aq)<br>Complete: 2{Ag^+} + 2{NO3^−} + {Ca^2+} + 2{Cl^−} → 2{AgCl}(s) + {Ca^2+} + 2{NO3^−}<br>Net: <b>{Ag^+}(aq) + {Cl^−}(aq) → {AgCl}(s)</b>, silver chloride.<br><br>(c) <b>NR</b>. {KNO3} and {NH4Cl} are both soluble, so every ion is a spectator." },
+  { n: "M3", num: 3, ch: "Ch 4", topic: "Oxidation numbers, redox",
+    q: "{Fe2O3}(s) + 3CO(g) → 2Fe(s) + 3{CO2}(g)<br>(a) Oxidation number of Fe in {Fe2O3}?<br>(b) Oxidation number of C in CO?<br>(c) Which element is oxidized?<br>(d) What is the reducing agent?<br>(e) Oxidation number of Cr in {Cr2O7^2−}?",
+    checks: [
+      { label: "(a) Fe", value: 3, sf: null, units: null, exact: true },
+      { label: "(b) C", value: 2, sf: null, units: null, exact: true },
+      { label: "(c) oxidized", text: ["C", "carbon"] },
+      { label: "(d) reducing agent", text: ["CO", "carbon monoxide"] },
+      { label: "(e) Cr", value: 6, sf: null, units: null, exact: true }
+    ],
+    sol: "(a) 2x + 3(−2) = 0, so Fe is <b>+3</b>.<br>(b) x + (−2) = 0, so C is <b>+2</b>.<br>(c) C goes from +2 in CO to +4 in {CO2}: <b>carbon is oxidized</b> (Fe goes +3 → 0, reduced).<br>(d) The species that contains the oxidized element: <b>CO</b>.<br>(e) 2x + 7(−2) = −2, so 2x = 12 and Cr is <b>+6</b>." },
+  { n: "M4", num: 4, ch: "Ch 4", topic: "Limiting reactant, yield",
+    q: "{N2}(g) + 3{H2}(g) → 2{NH3}(g). 14.0 g {N2} reacts with 4.00 g {H2}. Use N = 14.01, H = 1.008.<br>(a) Which reactant is limiting?<br>(b) Theoretical yield of {NH3} in grams?<br>(c) If 12.8 g {NH3} is collected, what is the percent yield?",
+    checks: [
+      { label: "(a)", text: ["N2", "nitrogen"] },
+      { label: "(b)", value: 17.0, sf: 3, units: ["g"] },
+      { label: "(c)", value: 75.2, sf: 3, units: ["%"] }
+    ],
+    sol: "{N2}: 14.0 ÷ 28.02 = 0.4996 mol. {H2}: 4.00 ÷ 2.016 = 1.984 mol.<br>(a) {NH3} from {N2}: 0.4996 × 2 = 0.9993 mol. From {H2}: 1.984 × 2/3 = 1.323 mol. <b>{N2} is limiting</b>.<br>(b) 0.9993 mol × 17.03 g/mol = <b>17.0 g</b>.<br>(c) 12.8 ÷ 17.02 × 100 = <b>75.2%</b>." },
+  { n: "M5", num: 5, ch: "Ch 4", topic: "Titration",
+    q: "(a) What volume in mL of 0.1250 M {NaOH} is needed to neutralize 30.00 mL of 0.1840 M {H2SO4}?<br>(b) A 0.4500 g sample of KHP (204.22 g/mol, one acidic H) needs 22.35 mL of {NaOH} to reach the endpoint. What is the molarity of the {NaOH}?",
+    checks: [
+      { label: "(a)", value: 88.32, sf: 4, units: ["mL"] },
+      { label: "(b)", value: 0.09859, sf: 4, units: ["M", "mol/L"] }
+    ],
+    sol: "(a) {H2SO4} + 2{NaOH} → {Na2SO4} + 2{H2O}. mol {H2SO4} = 0.03000 L × 0.1840 M = 0.005520 mol. mol {NaOH} = 2 × 0.005520 = 0.01104 mol. V = 0.01104 ÷ 0.1250 = 0.08832 L = <b>88.32 mL</b>.<br>(b) mol KHP = 0.4500 ÷ 204.22 = 0.002204 mol = mol {NaOH} (1:1). 0.002204 ÷ 0.02235 L = <b>0.09859 M</b>." },
+  { n: "M6", num: 6, ch: "Ch 5", topic: "Coffee-cup calorimetry",
+    q: "2.50 g of {NaOH} (40.00 g/mol) dissolves in 100.0 g of water in a coffee-cup calorimeter. The temperature rises from 21.50 °C to 27.84 °C. Take the solution's mass as 102.5 g and c = 4.184 J/g·°C.<br>(a) Calculate q for the solution in J.<br>(b) Calculate ΔH for dissolving {NaOH} in kJ/mol.",
+    checks: [
+      { label: "(a) q(soln)", value: 2720, sf: 3, units: ["J"], tol: 0.003 },
+      { label: "(b) ΔH", value: -43.5, sf: 3, units: ["kJ/mol"] }
+    ],
+    sol: "(a) ΔT = 27.84 − 21.50 = 6.34 °C. q(soln) = 102.5 × 4.184 × 6.34 = <b>2.72 × 10^3 J</b> (3 sig figs from 6.34).<br>(b) q(rxn) = −2.719 kJ. mol {NaOH} = 2.50 ÷ 40.00 = 0.0625 mol. ΔH = −2.719 ÷ 0.0625 = <b>−43.5 kJ/mol</b>. Negative because the water warmed up: exothermic." },
+  { n: "M7", num: 7, ch: "Ch 5", topic: "Enthalpy of formation",
+    q: "{C3H8}(g) + 5{O2}(g) → 3{CO2}(g) + 4{H2O}(l). ΔH°f (kJ/mol): {C3H8}(g) −103.8, {CO2}(g) −393.5, {H2O}(l) −285.8.<br>(a) Calculate ΔH°rxn.<br>(b) How much heat is released when 11.0 g of {C3H8} (44.09 g/mol) burns?",
+    checks: [
+      { label: "(a) ΔH°rxn", value: -2219.9, sf: 5, units: ["kJ"], tol: 0.001 },
+      { label: "(b) heat released", value: 554, sf: 3, units: ["kJ"], abs: true }
+    ],
+    sol: "(a) ΔH° = Σ products − Σ reactants = [3(−393.5) + 4(−285.8)] − [(−103.8) + 5(0)] = −2324.7 + 103.8 = <b>−2219.9 kJ</b>. {O2} is an element, so its ΔH°f is 0.<br>(b) 11.0 ÷ 44.09 = 0.2495 mol × 2219.9 kJ/mol = <b>554 kJ released</b>." },
+  { n: "M8", num: 8, ch: "Ch 6", topic: "Bohr model and light",
+    q: "An electron in a hydrogen atom moves from n = 5 to n = 2.<br>(a) Is light emitted or absorbed?<br>(b) Calculate the photon's energy in J.<br>(c) Calculate its wavelength in nm.<br>(d) Calculate its frequency.",
+    checks: [
+      { label: "(a)", text: ["emitted", "emission"] },
+      { label: "(b)", value: 4.576e-19, sf: 4, units: ["J"], tol: 0.002 },
+      { label: "(c)", value: 434.1, sf: 4, units: ["nm"], tol: 0.002 },
+      { label: "(d)", value: 6.906e14, sf: 4, units: ["Hz", "s^-1", "1/s", "/s", "s-1"], tol: 0.002 }
+    ],
+    sol: "(a) Falling to a lower level: <b>emitted</b>.<br>(b) ΔE = 2.179 × 10^−18 J × (1/2^2 − 1/5^2) = 2.179 × 10^−18 × 0.2100 = <b>4.576 × 10^−19 J</b>.<br>(c) λ = hc ÷ E = (6.626 × 10^−34 × 2.998 × 10^8) ÷ 4.576 × 10^−19 = 4.341 × 10^−7 m = <b>434.1 nm</b> (violet).<br>(d) ν = E ÷ h = 4.576 × 10^−19 ÷ 6.626 × 10^−34 = <b>6.906 × 10^14 Hz</b>." },
+  { n: "M9", num: 9, ch: "Ch 6", topic: "Configurations, quantum numbers",
+    q: "(a) Noble-gas configuration of Mn.<br>(b) Noble-gas configuration of {Cu^+}.<br>(c) How many unpaired electrons does Mn have?<br>(d) Name the subshell with n = 3, l = 2.<br>(e) Maximum number of electrons in the n = 3 shell?<br>(f) Is the set (n, l, m<sub>l</sub>, m<sub>s</sub>) = (2, 2, 0, +½) allowed? Yes or no.",
+    checks: [
+      { label: "(a) Mn", config: "[Ar] 4s2 3d5" },
+      { label: "(b) Cu+", config: "[Ar] 3d10" },
+      { label: "(c) unpaired", value: 5, sf: null, units: null, exact: true },
+      { label: "(d)", text: ["3d"] },
+      { label: "(e)", value: 18, sf: null, units: null, exact: true },
+      { label: "(f)", text: ["no", "n"] }
+    ],
+    sol: "(a) Mn, Z = 25: [[[Ar] 4s2 3d5]].<br>(b) Cu is [[[Ar] 4s1 3d10]] (exception). {Cu^+} loses the 4s electron first: [[[Ar] 3d10]].<br>(c) 3d^5 puts one electron in each of the five d orbitals: <b>5 unpaired</b>.<br>(d) l = 2 is d: <b>3d</b>.<br>(e) 2n^2 = <b>18</b>.<br>(f) <b>No</b>: l can only go up to n − 1 = 1." }
+];
 
 const FLASHCARDS = [
   ["Molarity", "M = mol solute ÷ L solution"],

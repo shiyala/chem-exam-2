@@ -678,7 +678,7 @@ function problemCard(p, opts = {}) {
   const status = store.get("probs", {});
   const card = el("article", { class: "card problem", id: "p" + p.n });
   const st = status[p.n];
-  card.appendChild(el("div", { class: "card-head" }, `<h3>${p.n}. ${p.topic}</h3><span class="pill ${st || ""}">${p.ch}${st === "got" ? " · got it" : st === "missed" ? " · redo" : ""}</span>`));
+  card.appendChild(el("div", { class: "card-head" }, `<h3>${p.num || p.n}. ${p.topic}</h3><span class="pill ${st || ""}">${p.ch}${st === "got" ? " · got it" : st === "missed" ? " · redo" : ""}</span>`));
   card.appendChild(el("div", { class: "q" }, R(p.q)));
   if (!opts.noChecks && p.checks && p.checks.length) {
     const box = el("div", { class: "checks" });
@@ -687,7 +687,7 @@ function problemCard(p, opts = {}) {
     card.appendChild(box);
     card.__grade = () => ws.map(w => w.__grade());
   }
-  if (opts.mock) card.appendChild(el("textarea", { class: "work", rows: "3", placeholder: "Your work", "aria-label": "Your work for problem " + p.n }));
+  if (opts.mock) card.appendChild(el("textarea", { class: "work", rows: "3", placeholder: "Your work", "aria-label": "Your work for problem " + (p.num || p.n) }));
   const actions = el("div", { class: "actions" });
   if (!opts.noHint && p.hint) {
     const hint = el("div", { class: "hint", hidden: "" }, R(p.hint));
@@ -732,7 +732,7 @@ VIEWS.mock = main => {
   main.appendChild(bar);
   const area = el("div", { class: "mock-area" });
   main.appendChild(area);
-  const cards = MOCK.map(n => problemCard(PROBLEMS.find(p => p.n === n), { mock: true, noHint: true, noSolution: true }));
+  const cards = MOCK_PROBLEMS.map(p => problemCard(p, { mock: true, noHint: true, noSolution: true }));
   let left = 50 * 60, timer = null, started = false;
   const fmt = s => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   const finish = () => {
