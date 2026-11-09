@@ -427,6 +427,88 @@ function saveAnswer(key, rec) {
   if (!rec.v && !rec.u) delete all[key]; else all[key] = rec;
   store.set("answers", all);
 }
+/* ---------------- equation balancing ---------------- */
+/* Atom counts of a formula like Ca3(PO4)2 or Fe2O3. */
+function atomCounts(f) {
+  let i = 0;
+  function group() {
+    const m = {};
+    while (i < f.length && f[i] !== ")") {
+      let part;
+      if (f[i] === "(") { i++; part = group(); i++; }
+      else {
+        const e = f.slice(i).match(/^[A-Z][a-z]?/);
+        if (!e) { i++; continue; }
+        i += e[0].length; part = { [e[0]]: 1 };
+      }
+      const d = f.slice(i).match(/^\d+/); const k = d ? +d[0] : 1; if (d) i += d[0].length;
+      for (const x in part) m[x] = (m[x] || 0) + part[x] * k;
+    }
+    return m;
+  }
+  return group();
+}
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+/* check.balance = { left: [...formulas], right: [...] }. Any coefficients that balance every element in lowest whole numbers are right. */
+function balanceWidget(check, wrap, out, onResult, saveKey, prev, live) {
+  const { left, right } = check.balance;
+  const all = [...left, ...right];
+  const counts = all.map(atomCounts);
+  const elems = [...new Set(counts.flatMap(c => Object.keys(c)))];
+  const eq = el("div", { class: "bal-eq" });
+  const boxes = all.map((f, i) => {
+    if (i === left.length) eq.appendChild(el("span", { class: "bal-arrow" }, "→"));
+    else if (i > 0) eq.appendChild(el("span", { class: "bal-plus" }, "+"));
+    const term = el("span", { class: "bal-term" });
+    const b = el("input", { type: "text", inputmode: "numeric", pattern: "[0-9]*", autocomplete: "off", enterkeyhint: "next", class: "bal-co", placeholder: "1", maxlength: "3", "aria-label": "coefficient for " + f });
+    term.appendChild(b);
+    term.appendChild(el("span", { class: "bal-f" }, chem(f)));
+    eq.appendChild(term);
+    return b;
+  });
+  wrap.appendChild(eq);
+  const tally = el("div", { class: "bal-tally", "aria-live": "polite" });
+  wrap.appendChild(tally);
+  const coeffs = () => boxes.map(b => { const v = b.value.trim(); return v === "" ? 1 : (/^\d+$/.test(v) ? +v : NaN); });
+  const sums = co => elems.map(x => {
+    let L = 0, Rr = 0;
+    counts.forEach((c, i) => { const n = (c[x] || 0) * co[i]; if (i < left.length) L += n; else Rr += n; });
+    return [x, L, Rr];
+  });
+  const draw = () => {
+    const co = coeffs();
+    if (co.some(isNaN)) { tally.innerHTML = "Whole numbers only."; return; }
+    tally.innerHTML = sums(co).map(([x, L, Rr]) => `<span class="bal-el ${L === Rr ? "ok" : "off"}"><b>${x}</b> ${L} | ${Rr}</span>`).join("");
+  };
+  const run = () => {
+    const co = coeffs();
+    let ok = false, msg;
+    if (co.some(n => isNaN(n) || n < 1)) msg = "Use whole numbers of 1 or more. An empty box counts as 1.";
+    else if (!sums(co).every(([, L, Rr]) => L === Rr)) msg = "Not balanced yet. Look for the red element in the counts below the equation.";
+    else if (co.reduce(gcd) !== 1) msg = "Balanced, but not in lowest whole numbers. Divide every coefficient by " + co.reduce(gcd) + ".";
+    else { ok = true; msg = "Correct. Balanced in lowest whole numbers."; }
+    out.className = "feedback " + (ok ? "good" : "bad"); out.innerHTML = msg;
+    onResult && onResult(ok);
+    return ok;
+  };
+  wrap.__grade = run;
+  let checked = !!(prev && prev.c);
+  const keep = () => saveKey && saveAnswer(saveKey, { v: boxes.map(b => b.value.trim()).join(",").replace(/^,+$/, ""), c: checked });
+  boxes.forEach((b, i) => {
+    b.addEventListener("input", () => { b.value = b.value.replace(/\D/g, ""); checked = false; keep(); draw(); out.className = "feedback"; out.innerHTML = ""; });
+    b.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (boxes[i + 1]) boxes[i + 1].focus(); else if (live) { checked = true; keep(); run(); } } });
+    b.addEventListener("focus", () => { try { b.select(); } catch (e) {} });
+  });
+  if (live) {
+    const btn = el("button", { class: "btn small", type: "button" }, "Check");
+    btn.addEventListener("click", () => { checked = true; keep(); run(); });
+    wrap.appendChild(btn);
+  }
+  if (prev && prev.v) prev.v.split(",").forEach((v, i) => { if (boxes[i]) boxes[i].value = v; });
+  draw();
+  if (prev && prev.c) run();
+}
+
 /* opts.deferred: no Check button or feedback until wrap.__grade() is called (mock exam). */
 function checkWidget(check, onResult, saveKey, opts = {}) {
   const wrap = el("div", { class: "check" });
@@ -434,6 +516,7 @@ function checkWidget(check, onResult, saveKey, opts = {}) {
   const prev = savedAnswer(saveKey);
   if (check.label) wrap.appendChild(el("span", { class: "check-label" }, R(check.label)));
   const out = el("div", { class: "feedback" });
+  if (check.balance) { balanceWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
   if (check.text || check.config) {
     const inp = el("input", { type: "text", placeholder: check.config ? "e.g. [Ar] 4s2 3d6" : "your answer", "aria-label": "answer " + (check.label || "") });
     if (check.config) { inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off"); inp.setAttribute("spellcheck", "false"); }

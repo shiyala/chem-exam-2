@@ -173,12 +173,12 @@ const PROBLEMS = [
     sol: "(a) 0.0042 ÷ 250.0 × 10^6 = <b>17 ppm</b> (2 sig figs from 0.0042).<br>(b) 15.0 ÷ (15.0 + 135.0) × 100 = <b>10.0%</b>.<br>(c) 2 × 0.150 M = <b>0.300 M {Cl^−}</b>." },
   // ---------- Ch 4 ----------
   { n: 4, ch: "Ch 4", topic: "Balancing",
-    q: "Balance (type the coefficients separated by commas, use 1 where needed):<br>(a) {C4H10} + {O2} → {CO2} + {H2O}<br>(b) Al + {O2} → {Al2O3}<br>(c) {Fe2O3} + CO → Fe + {CO2}<br>(d) {Ca(OH)2} + {H3PO4} → {Ca3(PO4)2} + {H2O}",
+    q: "Balance each equation. Put a coefficient in each box; an empty box counts as 1.",
     checks: [
-      { label: "(a)", text: ["2,13,8,10"] },
-      { label: "(b)", text: ["4,3,2"] },
-      { label: "(c)", text: ["1,3,2,3"] },
-      { label: "(d)", text: ["3,2,1,6"] }
+      { label: "(a)", balance: { left: ["C4H10", "O2"], right: ["CO2", "H2O"] } },
+      { label: "(b)", balance: { left: ["Al", "O2"], right: ["Al2O3"] } },
+      { label: "(c)", balance: { left: ["Fe2O3", "CO"], right: ["Fe", "CO2"] } },
+      { label: "(d)", balance: { left: ["Ca(OH)2", "H3PO4"], right: ["Ca3(PO4)2", "H2O"] } }
     ],
     hint: "Balance C, then H, then O last. An odd number of O atoms means double everything. Keep {PO4} together.",
     sol: "(a) <b>2</b>{C4H10} + <b>13</b>{O2} → <b>8</b>{CO2} + <b>10</b>{H2O}<br>(b) <b>4</b>Al + <b>3</b>{O2} → <b>2</b>{Al2O3}<br>(c) {Fe2O3} + <b>3</b>CO → <b>2</b>Fe + <b>3</b>{CO2}<br>(d) <b>3</b>{Ca(OH)2} + <b>2</b>{H3PO4} → {Ca3(PO4)2} + <b>6</b>{H2O}" },

@@ -251,6 +251,15 @@ main { padding-bottom: 88px; }
 .calc-key.eq { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .calc-key:active { transform: translateY(1px); }
 .calc-use { align-self: stretch; }
+.check .bal-eq { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; font-size: 1.05rem; }
+.bal-term { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.check input.bal-co { flex: none; width: 2.6em; padding: 6px 4px; text-align: center; font-size: 16px; font-weight: 600; }
+.bal-plus, .bal-arrow { color: var(--muted); padding: 0 2px; }
+.bal-arrow { font-size: 1.2em; }
+.bal-tally { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+.bal-el { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
+.bal-el.ok { color: var(--good); background: var(--good-bg); border-color: transparent; }
+.bal-el.off { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
 .check input.calc-filled { outline: 3px solid var(--good); outline-offset: 1px; }
 body.calc-open main { padding-bottom: 440px; }
 @media (min-width: 720px) { .calc-panel { left: auto; right: 16px; bottom: 16px; width: 320px; border-radius: 16px; } .calc-head { cursor: move; } body.calc-open main { padding-bottom: 88px; } }
@@ -281,12 +290,12 @@ body.calc-open main { padding-bottom: 440px; }
 </header>
 <main id="main" tabindex="-1"></main>
 <footer>Progress is saved only in this browser. Check every value against your notes and Dr. Butler's equation sheet. <a href="privacy.html">Privacy</a></footer>
-<script src="config.js?v=25"></script>
-<script src="data.js?v=25"></script>
-<script src="app.js?v=25"></script>
-<script src="levels.js?v=25"></script>
-<script src="ask.js?v=25"></script>
-<script src="calc.js?v=25"></script>
+<script src="config.js?v=26"></script>
+<script src="data.js?v=26"></script>
+<script src="app.js?v=26"></script>
+<script src="levels.js?v=26"></script>
+<script src="ask.js?v=26"></script>
+<script src="calc.js?v=26"></script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById("theme");
