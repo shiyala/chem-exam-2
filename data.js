@@ -183,11 +183,15 @@ const PROBLEMS = [
     hint: "Balance C, then H, then O last. An odd number of O atoms means double everything. Keep {PO4} together.",
     sol: "(a) <b>2</b>{C4H10} + <b>13</b>{O2} → <b>8</b>{CO2} + <b>10</b>{H2O}<br>(b) <b>4</b>Al + <b>3</b>{O2} → <b>2</b>{Al2O3}<br>(c) {Fe2O3} + <b>3</b>CO → <b>2</b>Fe + <b>3</b>{CO2}<br>(d) <b>3</b>{Ca(OH)2} + <b>2</b>{H3PO4} → {Ca3(PO4)2} + <b>6</b>{H2O}" },
   { n: 5, ch: "Ch 4", topic: "Precipitation, net ionic",
-    q: "For each pair of aqueous solutions, write the balanced molecular, complete ionic and net ionic equations, or write NR. Name any precipitate.<br>(a) lead(II) nitrate + potassium iodide<br>(b) iron(III) chloride + sodium hydroxide<br>(c) sodium nitrate + potassium chloride",
+    q: "For each pair of aqueous solutions, write the balanced molecular, complete ionic and net ionic equations, or write NR. Name any precipitate. Type each equation, using ^ for charges (Pb^2+, NO3^−) and the keys for → and states. Copy from above starts the next step from your last one.<br>(a) lead(II) nitrate + potassium iodide<br>(b) iron(III) chloride + sodium hydroxide<br>(c) sodium nitrate + potassium chloride",
     checks: [
-      { label: "(a) precipitate formula", text: ["PbI2"] },
-      { label: "(b) precipitate formula", text: ["Fe(OH)3"] },
-      { label: "(c) reaction or NR?", text: ["NR", "no reaction"] }
+      { label: "(a) molecular", eq: "Pb(NO3)2(aq) + 2KI(aq) -> PbI2(s) + 2KNO3(aq)" },
+      { label: "(a) complete ionic", eq: "Pb^2+(aq) + 2NO3^-(aq) + 2K^+(aq) + 2I^-(aq) -> PbI2(s) + 2K^+(aq) + 2NO3^-(aq)", copyUp: true },
+      { label: "(a) net ionic", eq: "Pb^2+(aq) + 2I^-(aq) -> PbI2(s)", copyUp: true },
+      { label: "(b) molecular", eq: "FeCl3(aq) + 3NaOH(aq) -> Fe(OH)3(s) + 3NaCl(aq)" },
+      { label: "(b) complete ionic", eq: "Fe^3+(aq) + 3Cl^-(aq) + 3Na^+(aq) + 3OH^-(aq) -> Fe(OH)3(s) + 3Na^+(aq) + 3Cl^-(aq)", copyUp: true },
+      { label: "(b) net ionic", eq: "Fe^3+(aq) + 3OH^-(aq) -> Fe(OH)3(s)", copyUp: true },
+      { label: "(c) equation or NR", eq: "NR", nr: true }
     ],
     hint: "Swap partners, then check each product against the solubility rules. Only (aq) strong electrolytes get split.",
     sol: "(a) {Pb(NO3)2}(aq) + 2{KI}(aq) → {PbI2}(s) + 2{KNO3}(aq)<br>Complete: {Pb^2+} + 2{NO3^−} + 2{K^+} + 2{I^−} → {PbI2}(s) + 2{K^+} + 2{NO3^−}<br>Net: <b>{Pb^2+}(aq) + 2{I^−}(aq) → {PbI2}(s)</b>, lead(II) iodide (yellow).<br><br>(b) {FeCl3}(aq) + 3{NaOH}(aq) → {Fe(OH)3}(s) + 3{NaCl}(aq)<br>Complete: {Fe^3+} + 3{Cl^−} + 3{Na^+} + 3{OH^−} → {Fe(OH)3}(s) + 3{Na^+} + 3{Cl^−}<br>Net: <b>{Fe^3+}(aq) + 3{OH^−}(aq) → {Fe(OH)3}(s)</b>, iron(III) hydroxide.<br><br>(c) <b>NR</b>. {NaCl} and {KNO3} are both soluble, so every ion is a spectator." },
@@ -206,8 +210,15 @@ const PROBLEMS = [
     hint: "Group 1 and ammonium compounds are always soluble. Check the exceptions for chloride and sulfate.",
     sol: "{AgCl} <b>insoluble</b>; {K2CO3} <b>soluble</b> (Group 1); {BaSO4} <b>insoluble</b>; {Mg(OH)2} <b>insoluble</b>; {NH4NO3} <b>soluble</b>; {CaCO3} <b>insoluble</b>; {PbCl2} <b>insoluble</b>; {Na3PO4} <b>soluble</b> (Group 1)." },
   { n: 7, ch: "Ch 4", topic: "Acid-base, gas-forming",
-    q: "Write the molecular and net ionic equations:<br>(a) sulfuric acid + sodium hydroxide<br>(b) acetic acid ({HC2H3O2}) + potassium hydroxide<br>(c) sodium carbonate + hydrochloric acid",
-    checks: [ { label: "(c) gas formed", text: ["CO2"] } ],
+    q: "Write the molecular and net ionic equations. Type each equation, using ^ for charges (Pb^2+, NO3^−) and the keys for → and states. Copy from above starts the next step from your last one.<br>(a) sulfuric acid + sodium hydroxide<br>(b) acetic acid ({HC2H3O2}) + potassium hydroxide<br>(c) sodium carbonate + hydrochloric acid",
+    checks: [
+      { label: "(a) molecular", eq: "H2SO4(aq) + 2NaOH(aq) -> Na2SO4(aq) + 2H2O(l)" },
+      { label: "(a) net ionic", eq: "H^+(aq) + OH^-(aq) -> H2O(l)", copyUp: true },
+      { label: "(b) molecular", eq: "HC2H3O2(aq) + KOH(aq) -> KC2H3O2(aq) + H2O(l)" },
+      { label: "(b) net ionic", eq: "HC2H3O2(aq) + OH^-(aq) -> C2H3O2^-(aq) + H2O(l)", copyUp: true },
+      { label: "(c) molecular", eq: "Na2CO3(aq) + 2HCl(aq) -> 2NaCl(aq) + H2O(l) + CO2(g)" },
+      { label: "(c) net ionic", eq: "CO3^2-(aq) + 2H^+(aq) -> H2O(l) + CO2(g)", copyUp: true }
+    ],
     hint: "Weak acids stay together in the net ionic equation. Carbonate + acid makes a gas.",
     sol: "(a) {H2SO4}(aq) + 2{NaOH}(aq) → {Na2SO4}(aq) + 2{H2O}(l). Net: <b>{H^+}(aq) + {OH^−}(aq) → {H2O}(l)</b>.<br>(b) {HC2H3O2}(aq) + {KOH}(aq) → {KC2H3O2}(aq) + {H2O}(l). Net: <b>{HC2H3O2}(aq) + {OH^−}(aq) → {C2H3O2^−}(aq) + {H2O}(l)</b>.<br>(c) {Na2CO3}(aq) + 2{HCl}(aq) → 2{NaCl}(aq) + {H2O}(l) + {CO2}(g). Net: <b>{CO3^2−}(aq) + 2{H^+}(aq) → {H2O}(l) + {CO2}(g)</b>." },
   { n: 8, ch: "Ch 4", topic: "Oxidation numbers, redox",
@@ -361,11 +372,15 @@ const MOCK_PROBLEMS = [
     ],
     sol: "(a) 3.75 g ÷ 174.26 g/mol = 0.02152 mol. 0.02152 mol ÷ 0.2000 L = <b>0.108 M</b>.<br>(b) Each {K2SO4} gives 2 {K^+}: 2 × 0.1076 = <b>0.215 M</b>.<br>(c) M₁V₁ = M₂V₂: 0.1076 M × 50.0 mL ÷ 250.0 mL = <b>0.0215 M</b>." },
   { n: "M2", num: 2, ch: "Ch 4", topic: "Precipitation, net ionic",
-    q: "For each pair of aqueous solutions, write the balanced molecular, complete ionic and net ionic equations, or write NR. Name any precipitate.<br>(a) barium chloride + sodium sulfate<br>(b) silver nitrate + calcium chloride<br>(c) potassium chloride + ammonium nitrate",
+    q: "For each pair of aqueous solutions, write the balanced molecular, complete ionic and net ionic equations, or write NR. Name any precipitate. Type each equation, using ^ for charges (Pb^2+, NO3^−) and the keys for → and states. Copy from above starts the next step from your last one.<br>(a) barium chloride + sodium sulfate<br>(b) silver nitrate + calcium chloride<br>(c) potassium chloride + ammonium nitrate",
     checks: [
-      { label: "(a) precipitate formula", text: ["BaSO4"] },
-      { label: "(b) precipitate formula", text: ["AgCl"] },
-      { label: "(c) reaction or NR?", text: ["NR", "no reaction"] }
+      { label: "(a) molecular", eq: "BaCl2(aq) + Na2SO4(aq) -> BaSO4(s) + 2NaCl(aq)" },
+      { label: "(a) complete ionic", eq: "Ba^2+(aq) + 2Cl^-(aq) + 2Na^+(aq) + SO4^2-(aq) -> BaSO4(s) + 2Na^+(aq) + 2Cl^-(aq)", copyUp: true },
+      { label: "(a) net ionic", eq: "Ba^2+(aq) + SO4^2-(aq) -> BaSO4(s)", copyUp: true },
+      { label: "(b) molecular", eq: "2AgNO3(aq) + CaCl2(aq) -> 2AgCl(s) + Ca(NO3)2(aq)" },
+      { label: "(b) complete ionic", eq: "2Ag^+(aq) + 2NO3^-(aq) + Ca^2+(aq) + 2Cl^-(aq) -> 2AgCl(s) + Ca^2+(aq) + 2NO3^-(aq)", copyUp: true },
+      { label: "(b) net ionic", eq: "Ag^+(aq) + Cl^-(aq) -> AgCl(s)", copyUp: true },
+      { label: "(c) equation or NR", eq: "NR", nr: true }
     ],
     sol: "(a) {BaCl2}(aq) + {Na2SO4}(aq) → {BaSO4}(s) + 2{NaCl}(aq)<br>Complete: {Ba^2+} + 2{Cl^−} + 2{Na^+} + {SO4^2−} → {BaSO4}(s) + 2{Na^+} + 2{Cl^−}<br>Net: <b>{Ba^2+}(aq) + {SO4^2−}(aq) → {BaSO4}(s)</b>, barium sulfate.<br><br>(b) 2{AgNO3}(aq) + {CaCl2}(aq) → 2{AgCl}(s) + {Ca(NO3)2}(aq)<br>Complete: 2{Ag^+} + 2{NO3^−} + {Ca^2+} + 2{Cl^−} → 2{AgCl}(s) + {Ca^2+} + 2{NO3^−}<br>Net: <b>{Ag^+}(aq) + {Cl^−}(aq) → {AgCl}(s)</b>, silver chloride.<br><br>(c) <b>NR</b>. {KNO3} and {NH4Cl} are both soluble, so every ion is a spectator." },
   { n: "M3", num: 3, ch: "Ch 4", topic: "Oxidation numbers, redox",

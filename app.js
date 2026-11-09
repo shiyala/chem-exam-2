@@ -509,6 +509,200 @@ function balanceWidget(check, wrap, out, onResult, saveKey, prev, live) {
   if (prev && prev.c) run();
 }
 
+/* ---------------- typed chemical equations (molecular, complete ionic, net ionic) ---------------- */
+/* Reads e.g. "Pb^2+(aq) + 2I^-(aq) -> PbI2(s)". Charges with ^ (or a trailing sign), states optional. */
+const EQ_SUPMAP = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "-" };
+function eqPrep(raw) {
+  let s = String(raw || "");
+  s = s.replace(/[₀-₉]/g, c => SUB[c]);
+  s = s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+/g, m => "^" + [...m].map(c => EQ_SUPMAP[c]).join(""));
+  s = s.replace(/[−–—]/g, "-").replace(/⟶|→|-+>|=+>|=/g, "⇒");
+  s = s.replace(/\(\s*(aq|s|l|g)\s*\)/gi, (m, st) => "§" + st.toLowerCase() + "§");
+  return s.replace(/\s+/g, "");
+}
+function parseEqSide(s) {
+  // returns array of species or null; backtracks on whether a sign is a charge or the "+" between species
+  function at(i) {
+    if (i >= s.length) return null;
+    const m = s.slice(i).match(/^(\d*)([A-Z(\[][A-Za-z0-9()\[\]]*)/);
+    if (!m) return null;
+    const co = m[1] === "" ? 1 : +m[1];
+    let f = m[2].replace(/[\[\]]/g, c => c === "[" ? "(" : ")");
+    let j = i + m[0].length;
+    const tries = [];
+    const cm = s.slice(j).match(/^\^(\d*)([+-])/);
+    if (cm) tries.push({ len: cm[0].length, alts: [{ f, q: (cm[2] === "+" ? 1 : -1) * (cm[1] === "" ? 1 : +cm[1]) }] });
+    else {
+      const sm = s.slice(j).match(/^([+-])/);
+      if (sm) {
+        const sign = sm[1] === "+" ? 1 : -1;
+        const alts = [{ f, q: sign }];
+        const d = f.match(/^(.+)(\d)$/);
+        if (d) alts.push({ f: d[1], q: sign * +d[2] });
+        tries.push({ len: 1, alts });
+      }
+      tries.push({ len: 0, alts: [{ f, q: 0 }] });
+    }
+    for (const t of tries) {
+      let k = j + t.len, state = "";
+      const st = s.slice(k).match(/^§(aq|s|l|g)§/);
+      if (st) { state = st[1]; k += st[0].length; }
+      const sp = { co, alts: t.alts, state };
+      if (k === s.length) return [sp];
+      if (s[k] === "+") { const rest = at(k + 1); if (rest) return [sp, ...rest]; }
+    }
+    return null;
+  }
+  return at(0);
+}
+function parseEq(raw) {
+  const s = eqPrep(raw);
+  const parts = s.split("⇒");
+  if (parts.length !== 2) return null;
+  const L = parseEqSide(parts[0]), Rt = parseEqSide(parts[1]);
+  return L && Rt ? [L, Rt] : null;
+}
+const eqKey = a => { const c = atomCounts(a.f); return Object.keys(c).sort().map(x => x + c[x]).join("") + "|" + a.q; };
+const eqShow = (a, state) => chem(a.f + (a.q ? "^" + (Math.abs(a.q) > 1 ? Math.abs(a.q) : "") + (a.q > 0 ? "+" : "−") : "")) + (state ? "(" + state + ")" : "");
+const eqText = (a, state) => (a.f + (a.q ? "^" + (Math.abs(a.q) > 1 ? Math.abs(a.q) : "") + (a.q > 0 ? "+" : "-") : "")) + (state ? "(" + state + ")" : "");
+/* Pick the reading of each typed species that matches one the answer uses. */
+function eqResolve(side, known) {
+  return side.map(sp => { const a = sp.alts.find(x => known.has(eqKey(x))) || sp.alts[0]; return { co: sp.co, a, k: eqKey(a), state: sp.state }; });
+}
+function eqTally(sides) {
+  const sum = side => { const m = {}; let q = 0; side.forEach(t => { const c = atomCounts(t.a.f); for (const x in c) m[x] = (m[x] || 0) + c[x] * t.co; q += t.a.q * t.co; }); return { m, q }; };
+  const [L, Rt] = sides.map(sum);
+  const els = [...new Set([...Object.keys(L.m), ...Object.keys(Rt.m)])];
+  const rows = els.map(x => [x, L.m[x] || 0, Rt.m[x] || 0]);
+  rows.push(["charge", L.q, Rt.q]);
+  return rows;
+}
+function gradeEq(input, answer) {
+  const isNR = t => /^(nr|noreaction)\.?$/i.test(String(t).replace(/\s+/g, ""));
+  if (isNR(answer)) return isNR(input) ? { ok: true, msg: "Correct. No precipitate, gas or water forms, so it's NR." } : { ok: false, msg: "Check the solubility of both possible products before you write a reaction." };
+  if (isNR(input)) return { ok: false, msg: "This pair does react. Swap partners and check each product against the solubility rules." };
+  const U = parseEq(input);
+  if (!U) return { ok: false, msg: "I can't read that yet. Write it like 2Na^+(aq) + SO4^2−(aq) → Na2SO4(aq), with one → between the sides." };
+  const E = parseEq(answer);
+  const known = new Set(E.flat().flatMap(sp => sp.alts.map(eqKey)));
+  const u = U.map(side => eqResolve(side, known)), e = E.map(side => eqResolve(side, known));
+  const name = t => eqShow(t.a, t.state);
+  const names = list => list.map(name).join(", ");
+  const sideName = i => i === 0 ? "left" : "right";
+  // same species on each side?
+  for (let i = 0; i < 2; i++) {
+    const uk = new Set(u[i].map(t => t.k)), ek = new Set(e[i].map(t => t.k));
+    const extra = u[i].filter(t => !ek.has(t.k)), missing = e[i].filter(t => !uk.has(t.k));
+    if (!extra.length && !missing.length) continue;
+    // spectators left in?
+    const other = new Set(u[1 - i].map(t => t.k));
+    const spect = extra.filter(t => other.has(t.k) && t.a.q !== 0);
+    if (spect.length && missing.length === 0) return { ok: false, msg: "Cross out the spectator ions: " + names(spect) + ". They appear unchanged on both sides." };
+    const unsplit = extra.filter(t => t.a.q === 0 && t.state === "aq");
+    if (unsplit.length && missing.some(t => t.a.q !== 0)) return { ok: false, msg: "Split the soluble (aq) ionic compounds into their ions: " + names(unsplit) + "." };
+    const split = missing.filter(t => t.a.q === 0 && (t.state === "s" || t.state === "l" || t.state === "g"));
+    if (split.length && extra.some(t => t.a.q !== 0)) return { ok: false, msg: "Keep solids, liquids and gases together as one formula. Something on the " + sideName(i) + " shouldn't be split." };
+    if (extra.some(t => t.a.q !== 0) && missing.every(t => t.a.q === 0) && missing.length) return { ok: false, msg: "This step keeps compounds together. Write the " + sideName(i) + " side as whole formulas, not ions." };
+    return { ok: false, msg: "The " + sideName(i) + " side isn't right yet. " + (missing.length ? "Something is missing or written differently there." : "There's something extra there.") };
+  }
+  // coefficients
+  const ratio = [];
+  for (let i = 0; i < 2; i++) u[i].forEach(t => { const m = e[i].find(x => x.k === t.k); ratio.push(t.co / m.co); });
+  const sameCount = u.every((side, i) => side.length === e[i].length);
+  const tally = eqTally(u);
+  const off = tally.filter(([, L, Rr]) => L !== Rr).map(([x]) => x);
+  if (!sameCount) return { ok: false, msg: "Write each species once, with one coefficient." };
+  if (!ratio.every(r => r === ratio[0])) return { ok: false, msg: off.length ? "Right species, but not balanced: check " + off.join(", ") + " in the counts below." : "Right species, but check the coefficients." };
+  if (ratio[0] !== 1) return { ok: false, msg: ratio[0] > 1 && Number.isInteger(ratio[0]) ? "Balanced, but not in lowest whole numbers. Divide every coefficient by " + ratio[0] + "." : "Right species, but check the coefficients." };
+  // states
+  const noState = [], wrongState = [];
+  for (let i = 0; i < 2; i++) u[i].forEach(t => { const m = e[i].find(x => x.k === t.k); if (!t.state) noState.push(m); else if (m.state && t.state !== m.state) wrongState.push(t); });
+  if (wrongState.length) return { ok: false, msg: "Species and coefficients are right. Check the state of " + names(wrongState) + "." };
+  if (noState.length) return { ok: false, msg: "Species and coefficients are right. Now add the states, (aq), (s), (l) or (g), to every species." };
+  return { ok: true, msg: "Correct. Balanced in atoms and charge, in lowest whole numbers." };
+}
+function eqPreview(input) {
+  const U = parseEq(input);
+  if (!U) return null;
+  const side = s => s.map(sp => (sp.co > 1 ? sp.co : "") + eqShow(sp.alts[0], sp.state)).join(" + ");
+  return { html: side(U[0]) + " → " + side(U[1]), tally: eqTally(U.map(s => eqResolve(s, new Set()))) };
+}
+const EQ_ROWS = [
+  ["sub", ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]],
+  ["sup", ["²", "³", "⁴", "⁺", "⁻"]],
+  ["", [["→", " → "], ["+", " + "], "(aq)", "(s)", "(l)", "(g)", ["⌫", null]]]
+];
+function eqWidget(check, wrap, out, onResult, saveKey, prev, live) {
+  wrap.classList.add("eqn");
+  const inp = el("input", { type: "text", class: "eq-in", autocomplete: "off", autocapitalize: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "done", placeholder: check.nr ? "equation, or NR" : "type the equation", "aria-label": "equation " + (check.label || "").replace(/[{}]/g, "") });
+  wrap.appendChild(inp);
+  const put = ins => {
+    const a = inp.selectionStart ?? inp.value.length, z = inp.selectionEnd ?? inp.value.length;
+    let v, p;
+    if (ins == null) { const s0 = a === z ? Math.max(0, a - 1) : a; v = inp.value.slice(0, s0) + inp.value.slice(z); p = s0; }
+    else { v = inp.value.slice(0, a) + ins + inp.value.slice(z); p = a + ins.length; }
+    inp.value = v; inp.focus(); try { inp.setSelectionRange(p, p); } catch (e) {}
+    inp.dispatchEvent(new Event("input"));
+  };
+  const pad = el("div", { class: "eq-pad", hidden: "" });
+  EQ_ROWS.forEach(([name, ks]) => {
+    const row = el("div", { class: "eq-row" });
+    if (name) row.appendChild(el("span", { class: "eq-row-lab" }, name === "sub" ? "x<sub>2</sub>" : "x<sup>2+</sup>"));
+    ks.forEach(k => {
+      const [lab, ins] = Array.isArray(k) ? k : [k, k];
+      const b = el("button", { type: "button", class: "eq-key", "aria-label": ins == null ? "delete" : (name ? name + "script " : "insert ") + lab }, lab);
+      b.addEventListener("pointerdown", ev => ev.preventDefault());
+      b.addEventListener("click", () => put(ins));
+      row.appendChild(b);
+    });
+    pad.appendChild(row);
+  });
+  if (check.copyUp) {
+    const cb = el("button", { type: "button", class: "eq-key eq-copy" }, "Copy from above");
+    cb.addEventListener("pointerdown", ev => ev.preventDefault());
+    cb.addEventListener("click", () => {
+      const up = wrap.previousElementSibling && wrap.previousElementSibling.querySelector("input.eq-in");
+      if (!up || !up.value.trim()) { out.className = "feedback bad"; out.innerHTML = "Write the step above first."; return; }
+      inp.value = up.value; inp.focus(); inp.dispatchEvent(new Event("input"));
+    });
+    pad.lastChild.appendChild(cb);
+  }
+  wrap.appendChild(pad);
+  inp.addEventListener("focus", () => { pad.hidden = false; });
+  inp.addEventListener("blur", () => { setTimeout(() => { if (document.activeElement !== inp) pad.hidden = true; }, 150); });
+  const pv = el("div", { class: "eq-preview", "aria-live": "polite" });
+  wrap.appendChild(pv);
+  const draw = () => {
+    const v = inp.value.trim();
+    if (!v || /^(nr|noreaction)\.?$/i.test(v.replace(/\s+/g, ""))) { pv.innerHTML = ""; return; }
+    const p = eqPreview(v);
+    if (!p) { pv.innerHTML = '<span class="eq-wait">Keep going… (one → between the sides)</span>'; return; }
+    pv.innerHTML = '<div class="bal-tally">' + p.tally.map(([x, L, Rr]) => `<span class="bal-el ${L === Rr ? "ok" : "off"}"><b>${x}</b> ${x === "charge" ? [L, Rr].map(n => n > 0 ? "+" + n : n < 0 ? "−" + -n : "0").join(" → ") : L + " → " + Rr}</span>`).join("") + "</div>";
+  };
+  const answers = [].concat(check.eq);
+  const run = () => {
+    const v = inp.value.trim();
+    let res = v ? gradeEq(v, answers[0]) : { ok: false, msg: "Write the equation first." };
+    for (const a of answers.slice(1)) { if (res.ok) break; const r = gradeEq(v, a); if (r.ok) res = r; }
+    out.className = "feedback " + (res.ok ? "good" : "bad"); out.innerHTML = res.msg;
+    onResult && onResult(res.ok);
+    return res.ok;
+  };
+  wrap.__grade = run;
+  let checked = !!(prev && prev.c);
+  const keep = () => saveKey && saveAnswer(saveKey, { v: inp.value, c: checked });
+  inp.addEventListener("input", () => { checked = false; keep(); draw(); out.className = "feedback"; out.innerHTML = ""; });
+  inp.addEventListener("keydown", e => { if (e.key === "Enter" && live) { e.preventDefault(); checked = true; keep(); run(); } });
+  if (live) {
+    const btn = el("button", { class: "btn small", type: "button" }, "Check");
+    btn.addEventListener("click", () => { checked = true; keep(); run(); });
+    wrap.appendChild(btn);
+  }
+  if (prev && prev.v) inp.value = prev.v;
+  draw();
+  if (prev && prev.c && live) run();
+}
+
 /* check.choice = [options], check.answer = the right option. Tap to pick; graded on tap (or at Finish in the mock). */
 function choiceWidget(check, wrap, out, onResult, saveKey, prev, live) {
   wrap.classList.add("choice");
@@ -546,6 +740,7 @@ function checkWidget(check, onResult, saveKey, opts = {}) {
   const out = el("div", { class: "feedback" });
   if (check.balance) { balanceWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
   if (check.choice) { choiceWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
+  if (check.eq) { eqWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
   if (check.text || check.config) {
     const inp = el("input", { type: "text", placeholder: check.config ? "e.g. [Ar] 4s2 3d6" : "your answer", "aria-label": "answer " + (check.label || "") });
     if (check.config) { inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off"); inp.setAttribute("spellcheck", "false"); }

@@ -284,6 +284,7 @@
       else t = inp.value.trim() ? ` [typed: ${inp.value.trim()}] ` : " [blank] ";
       c.replaceWith(document.createTextNode(t));
     });
+    clone.querySelectorAll(".eq-pad, .eq-preview").forEach(n => n.remove());
     const ob = node.querySelectorAll(".mc button"), cb = clone.querySelectorAll(".mc button");
     ob.forEach((b, i) => {
       const c = cb[i]; if (!c) return;

@@ -86,7 +86,7 @@
 
   /* Where the result goes: the answer box last tapped, or else the first empty box
      of the problem last touched (or the one in view), so the button works without tapping a box first. */
-  const BOX = ".check input:not(.unit):not(.bal-co)";
+  const BOX = ".check input:not(.unit):not(.bal-co):not(.eq-in)";
   const CARD = ".problem, .drill, .card";
   const main = document.getElementById("main");
   if (main) {
