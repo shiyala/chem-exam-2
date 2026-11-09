@@ -509,6 +509,34 @@ function balanceWidget(check, wrap, out, onResult, saveKey, prev, live) {
   if (prev && prev.c) run();
 }
 
+/* check.choice = [options], check.answer = the right option. Tap to pick; graded on tap (or at Finish in the mock). */
+function choiceWidget(check, wrap, out, onResult, saveKey, prev, live) {
+  wrap.classList.add("choice");
+  const row = el("div", { class: "chips", role: "radiogroup", "aria-label": (check.label || "choices").replace(/[{}]/g, "") });
+  let picked = prev && prev.v ? prev.v : null;
+  const btns = check.choice.map(o => {
+    const b = el("button", { class: "chip-pick", type: "button", role: "radio", "aria-checked": "false" }, R(o));
+    b.addEventListener("click", () => { picked = o; paint(); saveKey && saveAnswer(saveKey, { v: o, c: true }); if (live) run(); else { out.className = "feedback"; out.innerHTML = ""; } });
+    row.appendChild(b);
+    return b;
+  });
+  const paint = () => btns.forEach((b, i) => { const on = check.choice[i] === picked; b.classList.toggle("on", on); b.setAttribute("aria-checked", on ? "true" : "false"); b.classList.remove("good", "bad"); });
+  const run = () => {
+    const ok = picked != null && normText(picked) === normText(check.answer);
+    paint();
+    const i = check.choice.indexOf(picked);
+    if (i >= 0) btns[i].classList.add(ok ? "good" : "bad");
+    out.className = "feedback " + (ok ? "good" : "bad");
+    out.innerHTML = picked == null ? "Pick an answer first." : ok ? "Correct." : "Not quite. Try another, or open the solution.";
+    onResult && onResult(ok);
+    return ok;
+  };
+  wrap.__grade = run;
+  wrap.appendChild(row);
+  paint();
+  if (picked != null && live) run();
+}
+
 /* opts.deferred: no Check button or feedback until wrap.__grade() is called (mock exam). */
 function checkWidget(check, onResult, saveKey, opts = {}) {
   const wrap = el("div", { class: "check" });
@@ -517,6 +545,7 @@ function checkWidget(check, onResult, saveKey, opts = {}) {
   if (check.label) wrap.appendChild(el("span", { class: "check-label" }, R(check.label)));
   const out = el("div", { class: "feedback" });
   if (check.balance) { balanceWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
+  if (check.choice) { choiceWidget(check, wrap, out, onResult, saveKey, prev, live); wrap.appendChild(out); return wrap; }
   if (check.text || check.config) {
     const inp = el("input", { type: "text", placeholder: check.config ? "e.g. [Ar] 4s2 3d6" : "your answer", "aria-label": "answer " + (check.label || "") });
     if (check.config) { inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off"); inp.setAttribute("spellcheck", "false"); }

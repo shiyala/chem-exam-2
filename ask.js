@@ -290,6 +290,12 @@
       const tag = b.classList.contains("wrong") ? " (picked, wrong)" : b.classList.contains("right") ? " (correct answer)" : "";
       c.replaceWith(document.createTextNode(" • " + b.textContent.trim() + tag + "\n"));
     });
+    const oc = node.querySelectorAll(".chip-pick"), cc = clone.querySelectorAll(".chip-pick");
+    oc.forEach((b, i) => {
+      const c = cc[i]; if (!c) return;
+      const tag = b.classList.contains("on") ? (b.classList.contains("good") ? " (picked, right)" : b.classList.contains("bad") ? " (picked, wrong)" : " (picked)") : "";
+      c.replaceWith(document.createTextNode(" [" + b.textContent.trim() + tag + "]"));
+    });
     clone.querySelectorAll("[hidden]").forEach(h => {
       if (h.classList.contains("solution")) h.replaceWith(document.createTextNode("\n[Worked solution from the site, not opened by the student yet: " + h.textContent.trim() + "]\n"));
       else if (h.classList.contains("hint")) h.replaceWith(document.createTextNode("\n[Hint, not opened yet: " + h.textContent.trim() + "]\n"));
