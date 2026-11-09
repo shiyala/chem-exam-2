@@ -929,6 +929,26 @@ const OXNUM = [
   ["Mn", "MnO2", 4], ["Fe", "Fe2O3", 3], ["P", "PO4^3−", 5], ["Cl", "ClO3^−", 5], ["Cl", "HClO4", 7], ["O", "H2O2", -1], ["S", "H2S", -2],
   ["N", "NO2", 4], ["Cu", "Cu2O", 1], ["S", "SO3^2−", 4], ["N", "NO3^−", 5], ["C", "CO", 2], ["H", "NaH", -1], ["Cl", "Cl2", 0], ["Fe", "Fe", 0]
 ];
+const BALANCE_EQS = [
+  "H2 + O2 > H2O | 2,1,2", "N2 + H2 > NH3 | 1,3,2", "CH4 + O2 > CO2 + H2O | 1,2,1,2", "C3H8 + O2 > CO2 + H2O | 1,5,3,4",
+  "C2H6 + O2 > CO2 + H2O | 2,7,4,6", "Fe + O2 > Fe2O3 | 4,3,2", "Na + Cl2 > NaCl | 2,1,2", "KClO3 > KCl + O2 | 2,2,3",
+  "Al + HCl > AlCl3 + H2 | 2,6,2,3", "Zn + HCl > ZnCl2 + H2 | 1,2,1,1", "Mg + O2 > MgO | 2,1,2", "H2SO4 + NaOH > Na2SO4 + H2O | 1,2,1,2",
+  "Pb(NO3)2 + KI > PbI2 + KNO3 | 1,2,1,2", "AgNO3 + CaCl2 > AgCl + Ca(NO3)2 | 2,1,2,1", "FeCl3 + NaOH > Fe(OH)3 + NaCl | 1,3,1,3",
+  "Na2CO3 + HCl > NaCl + H2O + CO2 | 1,2,2,1,1", "C6H12O6 + O2 > CO2 + H2O | 1,6,6,6", "NH3 + O2 > NO + H2O | 4,5,4,6",
+  "P4 + O2 > P4O10 | 1,5,1", "Ca(OH)2 + HNO3 > Ca(NO3)2 + H2O | 1,2,1,2", "Fe2O3 + C > Fe + CO2 | 2,3,4,3", "C4H10 + O2 > CO2 + H2O | 2,13,8,10"
+].map(line => {
+  const [eq, co] = line.split("|");
+  const [l, r] = eq.split(">").map(side => side.trim().split(/\s*\+\s*/));
+  return { left: l, right: r, co: co.trim().split(",").map(Number) };
+});
+DRILLS.balance = { name: "Balancing equations", ch: "Ch 4", run: inputDrill(() => {
+  const e = pick(BALANCE_EQS);
+  const all = [...e.left, ...e.right];
+  const side = (fs, off) => fs.map((f, i) => (e.co[off + i] > 1 ? "<b>" + e.co[off + i] + "</b>" : "") + "{" + f + "}").join(" + ");
+  return { prompt: "Balance it. An empty box counts as 1.", check: { label: "", balance: { left: e.left, right: e.right } },
+    sol: side(e.left, 0) + " → " + side(e.right, e.left.length) + "<br>Balance the element that shows up in the fewest formulas first, keep polyatomic ions together, and leave O and H for last." };
+}) };
+
 DRILLS.oxnum = { name: "Oxidation numbers", ch: "Ch 4", run: inputDrill(() => {
   const [atom, f, v] = pick(OXNUM);
   return { prompt: `Oxidation number of <b>${atom}</b> in <b>{${f}}</b>?`, check: { label: "", value: v, exact: true },
