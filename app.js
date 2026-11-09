@@ -582,6 +582,8 @@ function gradeEq(input, answer) {
   const isNR = t => /^(nr|noreaction)\.?$/i.test(String(t).replace(/\s+/g, ""));
   if (isNR(answer)) return isNR(input) ? { ok: true, msg: "Correct. No precipitate, gas or water forms, so it's NR." } : { ok: false, msg: "Check the solubility of both possible products before you write a reaction." };
   if (isNR(input)) return { ok: false, msg: "This pair does react. Swap partners and check each product against the solubility rules." };
+  const sf = eqPrep(input).match(/\^([+-])(\d+)/);
+  if (sf) return { ok: false, msg: "Write the charge number first, then the sign: <sup>" + sf[2] + (sf[1] === "+" ? "+" : "−") + "</sup>, not <sup>" + (sf[1] === "+" ? "+" : "−") + sf[2] + "</sup>." };
   const U = parseEq(input);
   if (!U) {
     const parts = eqPrep(input).split("⇒");
@@ -615,6 +617,8 @@ function gradeEq(input, answer) {
     if (unsplit.length && missing.some(t => t.a.q !== 0)) return { ok: false, msg: "Split the soluble (aq) ionic compounds into their ions: " + names(unsplit) + "." };
     const split = missing.filter(t => t.a.q === 0 && (t.state === "s" || t.state === "l" || t.state === "g"));
     if (split.length && extra.some(t => t.a.q !== 0)) return { ok: false, msg: "Keep solids, liquids and gases together as one formula. Something on the " + sideName(i) + " shouldn't be split." };
+    const weak = missing.find(t => t.a.q === 0 && t.state === "aq");
+    if (weak && extra.some(t => t.a.q !== 0)) return { ok: false, msg: "Keep " + eqShow(weak.a) + " together. " + (/^H[A-Z]/.test(weak.a.f) && !/^H2O$/.test(weak.a.f) ? "It's a weak acid, so it barely ionizes and stays as whole molecules in ionic equations." : "It barely ionizes in water, so it isn't split into ions.") };
     if (extra.some(t => t.a.q !== 0) && missing.every(t => t.a.q === 0) && missing.length) return { ok: false, msg: "This step keeps compounds together. Write the " + sideName(i) + " side as whole formulas, not ions." };
     return { ok: false, msg: "The " + sideName(i) + " side isn't right yet. " + (missing.length ? "Something is missing or written differently there." : "There's something extra there.") };
   }
