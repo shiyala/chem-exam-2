@@ -530,7 +530,8 @@ function parseEqSide(s) {
     let f = m[2].replace(/[\[\]]/g, c => c === "[" ? "(" : ")");
     let j = i + m[0].length;
     const tries = [];
-    const cm = s.slice(j).match(/^\^(\d*)([+-])/);
+    const cm = s.slice(j).match(/^\^(\d*)([+-])/), cr = s.slice(j).match(/^\^([+-])(\d+)/);
+    if (cr) tries.push({ len: cr[0].length, alts: [{ f, q: (cr[1] === "+" ? 1 : -1) * +cr[2] }] });
     if (cm) tries.push({ len: cm[0].length, alts: [{ f, q: (cm[2] === "+" ? 1 : -1) * (cm[1] === "" ? 1 : +cm[1]) }] });
     else {
       const sm = s.slice(j).match(/^([+-])/);
@@ -582,7 +583,12 @@ function gradeEq(input, answer) {
   if (isNR(answer)) return isNR(input) ? { ok: true, msg: "Correct. No precipitate, gas or water forms, so it's NR." } : { ok: false, msg: "Check the solubility of both possible products before you write a reaction." };
   if (isNR(input)) return { ok: false, msg: "This pair does react. Swap partners and check each product against the solubility rules." };
   const U = parseEq(input);
-  if (!U) return { ok: false, msg: "I can't read that yet. Write it like 2Na^+(aq) + SO4^2−(aq) → Na2SO4(aq), with one → between the sides." };
+  if (!U) {
+    const parts = eqPrep(input).split("⇒");
+    if (parts.length !== 2) return { ok: false, msg: "Put one → between the two sides." };
+    const bad = !parseEqSide(parts[0]) ? "left" : "right";
+    return { ok: false, msg: "I can't read the " + bad + " side yet. Check each formula, and put charges on with the x<sup>2+</sup> keys, like Pb²⁺(aq) + 2I⁻(aq)." };
+  }
   const E = parseEq(answer);
   const known = new Set(E.flat().flatMap(sp => sp.alts.map(eqKey)));
   const u = U.map(side => eqResolve(side, known)), e = E.map(side => eqResolve(side, known));
@@ -594,6 +600,13 @@ function gradeEq(input, answer) {
     const uk = new Set(u[i].map(t => t.k)), ek = new Set(e[i].map(t => t.k));
     const extra = u[i].filter(t => !ek.has(t.k)), missing = e[i].filter(t => !uk.has(t.k));
     if (!extra.length && !missing.length) continue;
+    // an ion written with its count as a subscript, e.g. H2^2+ for 2H^+
+    for (const t of extra) for (const m of missing) {
+      const a = atomCounts(t.a.f), b = atomCounts(m.a.f), ka = Object.keys(a), kb = Object.keys(b);
+      if (!m.a.q || ka.length !== kb.length) continue;
+      const k = t.a.q / m.a.q;
+      if (k > 1 && Number.isInteger(k) && kb.every(x => a[x] === b[x] * k)) return { ok: false, msg: eqShow(t.a) + " isn't an ion. It splits into " + k + " separate " + eqShow(m.a) + " ions, so write " + k + eqShow(m.a) + ": the subscript becomes a coefficient." };
+    }
     // spectators left in?
     const other = new Set(u[1 - i].map(t => t.k));
     const spect = extra.filter(t => other.has(t.k) && t.a.q !== 0);
@@ -678,7 +691,7 @@ function eqWidget(check, wrap, out, onResult, saveKey, prev, live) {
     const v = inp.value.trim();
     if (!v || /^(nr|noreaction)\.?$/i.test(v.replace(/\s+/g, ""))) { pv.innerHTML = ""; return; }
     const p = eqPreview(v);
-    if (!p) { pv.innerHTML = '<span class="eq-wait">Keep going… (one → between the sides)</span>'; return; }
+    if (!p) { pv.innerHTML = '<span class="eq-wait">' + (eqPrep(v).split("⇒").length === 2 ? "Keep going…" : "Keep going… (one → between the sides)") + "</span>"; return; }
     pv.innerHTML = '<div class="bal-tally">' + p.tally.map(([x, L, Rr]) => `<span class="bal-el ${L === Rr ? "ok" : "off"}"><b>${x}</b> ${x === "charge" ? [L, Rr].map(n => n > 0 ? "+" + n : n < 0 ? "−" + -n : "0").join(" → ") : L + " → " + Rr}</span>`).join("") + "</div>";
   };
   const answers = [].concat(check.eq);
