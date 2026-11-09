@@ -650,7 +650,9 @@ function eqWidget(check, wrap, out, onResult, saveKey, prev, live) {
     if (name) row.appendChild(el("span", { class: "eq-row-lab" }, name === "sub" ? "x<sub>2</sub>" : "x<sup>2+</sup>"));
     ks.forEach(k => {
       const [lab, ins] = Array.isArray(k) ? k : [k, k];
-      const b = el("button", { type: "button", class: "eq-key", "aria-label": ins == null ? "delete" : (name ? name + "script " : "insert ") + lab }, lab);
+      const plain = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "²": "2", "³": "3", "⁴": "4", "⁺": "+", "⁻": "−" }[lab];
+      const face = name === "sub" ? '<span class="eq-x">x</span><sub>' + plain + "</sub>" : name === "sup" ? '<span class="eq-x">x</span><sup>' + plain + "</sup>" : lab;
+      const b = el("button", { type: "button", class: "eq-key", "aria-label": ins == null ? "delete" : name === "sub" ? "subscript " + plain : name === "sup" ? "superscript " + plain : "insert " + lab }, face);
       b.addEventListener("pointerdown", ev => ev.preventDefault());
       b.addEventListener("click", () => put(ins));
       row.appendChild(b);
