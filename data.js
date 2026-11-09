@@ -358,7 +358,37 @@ const PROBLEMS = [
       { label: "(d)", value: 6, sf: null, units: null, exact: true }
     ],
     hint: "Cr and Cu are the exceptions. Cations lose 4s before 3d.",
-    sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." }
+    sol: "(a) [[1s2 2s2 2p6 3s2 3p4]].<br>(b) Fe [[[Ar] 4s2 3d6]]; Cr [[[Ar] 4s1 3d5]] (exception); Cu [[[Ar] 4s1 3d10]] (exception); {Fe^3+} [[[Ar] 3d5]]; {Br^−} [[[Ar] 4s2 3d10 4p6]] = [Kr].<br>(c) 1s ↑↓, 2s ↑↓, 2p ↑ ↑ ↑: <b>3 unpaired</b>.<br>(d) [[[Ar] 4s2 3d10 4p4]]: <b>6 valence electrons</b>." },
+  { n: 24, ch: "Ch 4", topic: "Redox in acidic solution",
+    q: "Balance each reaction in <b>acidic</b> solution by half-reactions. Write the oxidation half, the reduction half (each with e<sup>−</sup>), then the overall equation in lowest whole numbers. States are optional. The key pad has e<sup>−</sup>.<br>(a) {MnO4^−} + {Fe^2+} → {Mn^2+} + {Fe^3+}<br>(b) {Cr2O7^2−} + {I^−} → {Cr^3+} + {I2}<br>(c) Cu + {NO3^−} → {Cu^2+} + NO",
+    checks: [
+      { label: "(a) oxidation half", eq: "Fe^2+ -> Fe^3+ + e^-", medium: "acidic" },
+      { label: "(a) reduction half", eq: "MnO4^- + 8H^+ + 5e^- -> Mn^2+ + 4H2O", medium: "acidic" },
+      { label: "(a) overall", eq: "MnO4^- + 5Fe^2+ + 8H^+ -> Mn^2+ + 5Fe^3+ + 4H2O", medium: "acidic" },
+      { label: "(b) oxidation half", eq: "2I^- -> I2 + 2e^-", medium: "acidic" },
+      { label: "(b) reduction half", eq: "Cr2O7^2- + 14H^+ + 6e^- -> 2Cr^3+ + 7H2O", medium: "acidic" },
+      { label: "(b) overall", eq: "Cr2O7^2- + 6I^- + 14H^+ -> 2Cr^3+ + 3I2 + 7H2O", medium: "acidic" },
+      { label: "(c) oxidation half", eq: "Cu -> Cu^2+ + 2e^-", medium: "acidic" },
+      { label: "(c) reduction half", eq: "NO3^- + 4H^+ + 3e^- -> NO + 2H2O", medium: "acidic" },
+      { label: "(c) overall", eq: "3Cu + 2NO3^- + 8H^+ -> 3Cu^2+ + 2NO + 4H2O", medium: "acidic" }
+    ],
+    hint: "For each half: balance the atom that changes, then O with {H2O}, then H with {H^+}, then charge with e<sup>−</sup>. Multiply the halves so the electrons match, add, and cancel.",
+    sol: "(a) Ox: {Fe^2+} → {Fe^3+} + e<sup>−</sup>. Red: {MnO4^−} + 8{H^+} + 5e<sup>−</sup> → {Mn^2+} + 4{H2O}. Ox × 5, add: <b>{MnO4^−} + 5{Fe^2+} + 8{H^+} → {Mn^2+} + 5{Fe^3+} + 4{H2O}</b>. Charge 17+ = 17+.<br>(b) Ox: 2{I^−} → {I2} + 2e<sup>−</sup>. Red: {Cr2O7^2−} + 14{H^+} + 6e<sup>−</sup> → 2{Cr^3+} + 7{H2O}. Ox × 3: <b>{Cr2O7^2−} + 6{I^−} + 14{H^+} → 2{Cr^3+} + 3{I2} + 7{H2O}</b>. Charge 6+ = 6+.<br>(c) Ox: Cu → {Cu^2+} + 2e<sup>−</sup>. Red: {NO3^−} + 4{H^+} + 3e<sup>−</sup> → NO + 2{H2O}. Ox × 3, red × 2: <b>3Cu + 2{NO3^−} + 8{H^+} → 3{Cu^2+} + 2NO + 4{H2O}</b>. Charge 6+ = 6+." },
+  { n: 25, ch: "Ch 4", topic: "Redox in basic solution",
+    q: "Balance each reaction in <b>basic</b> solution by half-reactions. Write the oxidation half, the reduction half (each with e<sup>−</sup>), then the overall equation in lowest whole numbers. No {H^+} in the answers: use {OH^−} and {H2O}. States are optional.<br>(a) {MnO4^−} + {I^−} → {MnO2} + {I2}<br>(b) {CrO4^2−} + {SO3^2−} → {Cr(OH)3} + {SO4^2−}<br>(c) {ClO^−} + {Cr(OH)4^−} → {Cl^−} + {CrO4^2−}",
+    checks: [
+      { label: "(a) oxidation half", eq: "2I^- -> I2 + 2e^-", medium: "basic" },
+      { label: "(a) reduction half", eq: "MnO4^- + 2H2O + 3e^- -> MnO2 + 4OH^-", medium: "basic" },
+      { label: "(a) overall", eq: "2MnO4^- + 6I^- + 4H2O -> 2MnO2 + 3I2 + 8OH^-", medium: "basic" },
+      { label: "(b) oxidation half", eq: "SO3^2- + 2OH^- -> SO4^2- + H2O + 2e^-", medium: "basic" },
+      { label: "(b) reduction half", eq: "CrO4^2- + 4H2O + 3e^- -> Cr(OH)3 + 5OH^-", medium: "basic" },
+      { label: "(b) overall", eq: "2CrO4^2- + 3SO3^2- + 5H2O -> 2Cr(OH)3 + 3SO4^2- + 4OH^-", medium: "basic" },
+      { label: "(c) oxidation half", eq: "Cr(OH)4^- + 4OH^- -> CrO4^2- + 4H2O + 3e^-", medium: "basic" },
+      { label: "(c) reduction half", eq: "ClO^- + H2O + 2e^- -> Cl^- + 2OH^-", medium: "basic" },
+      { label: "(c) overall", eq: "3ClO^- + 2Cr(OH)4^- + 2OH^- -> 3Cl^- + 2CrO4^2- + 5H2O", medium: "basic" }
+    ],
+    hint: "Balance each half as if it were acidic (O with {H2O}, H with {H^+}, charge with e<sup>−</sup>). Then add one {OH^−} to both sides for every {H^+}, turn {H^+} + {OH^−} into {H2O}, and cancel water.",
+    sol: "(a) Ox: 2{I^−} → {I2} + 2e<sup>−</sup>. Red (acid first: {MnO4^−} + 4{H^+} + 3e<sup>−</sup> → {MnO2} + 2{H2O}; add 4{OH^−}): {MnO4^−} + 2{H2O} + 3e<sup>−</sup> → {MnO2} + 4{OH^−}. Ox × 3, red × 2: <b>2{MnO4^−} + 6{I^−} + 4{H2O} → 2{MnO2} + 3{I2} + 8{OH^−}</b>. Charge 8− = 8−.<br>(b) Ox: {SO3^2−} + 2{OH^−} → {SO4^2−} + {H2O} + 2e<sup>−</sup>. Red: {CrO4^2−} + 4{H2O} + 3e<sup>−</sup> → {Cr(OH)3} + 5{OH^−}. Ox × 3, red × 2, cancel 3{H2O} and 6{OH^−}: <b>2{CrO4^2−} + 3{SO3^2−} + 5{H2O} → 2{Cr(OH)3} + 3{SO4^2−} + 4{OH^−}</b>. Charge 10− = 10−.<br>(c) Ox: {Cr(OH)4^−} + 4{OH^−} → {CrO4^2−} + 4{H2O} + 3e<sup>−</sup>. Red: {ClO^−} + {H2O} + 2e<sup>−</sup> → {Cl^−} + 2{OH^−}. Ox × 2, red × 3, cancel 3{H2O} and 6{OH^−}: <b>3{ClO^−} + 2{Cr(OH)4^−} + 2{OH^−} → 3{Cl^−} + 2{CrO4^2−} + 5{H2O}</b>. Charge 7− = 7−." }
 ];
 
 /* Mock exam: fresh problems, not in Practice. Same scope as Exam 2 (Ch 3 solutions through Ch 6, no periodic trends). */

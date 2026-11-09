@@ -524,6 +524,15 @@ function parseEqSide(s) {
   // returns array of species or null; backtracks on whether a sign is a charge or the "+" between species
   function at(i) {
     if (i >= s.length) return null;
+    const em = s.slice(i).match(/^(\d*)e(\^?-)/);
+    if (em) {
+      let k = i + em[0].length;
+      const st = s.slice(k).match(/^§(aq|s|l|g)§/); if (st) k += st[0].length;
+      const sp = { co: em[1] === "" ? 1 : +em[1], alts: [{ f: "e", q: -1 }], state: "" };
+      if (k === s.length) return [sp];
+      if (s[k] === "+") { const rest = at(k + 1); if (rest) return [sp, ...rest]; }
+      return null;
+    }
     const m = s.slice(i).match(/^(\d*)([A-Z(\[][A-Za-z0-9()\[\]]*)/);
     if (!m) return null;
     const co = m[1] === "" ? 1 : +m[1];
@@ -578,7 +587,7 @@ function eqTally(sides) {
   rows.push(["charge", L.q, Rt.q]);
   return rows;
 }
-function gradeEq(input, answer) {
+function gradeEq(input, answer, medium) {
   const isNR = t => /^(nr|noreaction)\.?$/i.test(String(t).replace(/\s+/g, ""));
   if (isNR(answer)) return isNR(input) ? { ok: true, msg: "Correct. No precipitate, gas or water forms, so it's NR." } : { ok: false, msg: "Check the solubility of both possible products before you write a reaction." };
   if (isNR(input)) return { ok: false, msg: "This pair does react. Swap partners and check each product against the solubility rules." };
@@ -609,9 +618,17 @@ function gradeEq(input, answer) {
       const k = t.a.q / m.a.q;
       if (k > 1 && Number.isInteger(k) && kb.every(x => a[x] === b[x] * k)) return { ok: false, msg: eqShow(t.a) + " isn't an ion. It splits into " + k + " separate " + eqShow(m.a) + " ions, so write " + k + eqShow(m.a) + ": the subscript becomes a coefficient." };
     }
+    const isE = t => t.a.f === "e", isH = t => t.k === "H1|1", isOH = t => t.k === "H1O1|-1";
+    const ansAll = e.flat();
+    if (extra.some(isE) && !ansAll.some(isE)) return { ok: false, msg: "The electrons should cancel in the overall equation. Multiply each half-reaction so both have the same number of e<sup>−</sup>, then add them." };
+    if (extra.some(isE) && e[1 - i].some(isE)) return { ok: false, msg: "The electrons go on the other side. Oxidation loses electrons (they're products); reduction gains them (they're reactants)." };
+    if (medium === "basic" && u.flat().some(isH)) return { ok: false, msg: "This one is in basic solution, so no H<sup>+</sup> in the final answer. Add the same number of OH<sup>−</sup> to both sides, turn each H<sup>+</sup> + OH<sup>−</sup> into H<sub>2</sub>O, and cancel water." };
+    if (medium === "acidic" && u.flat().some(isOH)) return { ok: false, msg: "This one is in acidic solution. Balance O with H<sub>2</sub>O and H with H<sup>+</sup>, not OH<sup>−</sup>." };
     // spectators left in?
     const other = new Set(u[1 - i].map(t => t.k));
-    const spect = extra.filter(t => other.has(t.k) && t.a.q !== 0);
+    const both = extra.filter(t => other.has(t.k));
+    const spect = both.filter(t => t.a.q !== 0);
+    if (both.length && missing.length === 0 && both.some(t => isE(t) || t.a.q === 0 || (medium && (isH(t) || isOH(t))))) return { ok: false, msg: "Cancel what appears on both sides: " + names(both) + "." };
     if (spect.length && missing.length === 0) return { ok: false, msg: "Cross out the spectator ions: " + names(spect) + ". They appear unchanged on both sides." };
     const unsplit = extra.filter(t => t.a.q === 0 && t.state === "aq");
     if (unsplit.length && missing.some(t => t.a.q !== 0)) return { ok: false, msg: "Split the soluble (aq) ionic compounds into their ions: " + names(unsplit) + "." };
@@ -633,7 +650,7 @@ function gradeEq(input, answer) {
   if (ratio[0] !== 1) return { ok: false, msg: ratio[0] > 1 && Number.isInteger(ratio[0]) ? "Balanced, but not in lowest whole numbers. Divide every coefficient by " + ratio[0] + "." : "Right species, but check the coefficients." };
   // states
   const noState = [], wrongState = [];
-  for (let i = 0; i < 2; i++) u[i].forEach(t => { const m = e[i].find(x => x.k === t.k); if (!t.state) noState.push(m); else if (m.state && t.state !== m.state) wrongState.push(t); });
+  for (let i = 0; i < 2; i++) u[i].forEach(t => { const m = e[i].find(x => x.k === t.k); if (!t.state) { if (m.state) noState.push(m); } else if (m.state && t.state !== m.state) wrongState.push(t); });
   if (wrongState.length) return { ok: false, msg: "Species and coefficients are right. Check the state of " + names(wrongState) + "." };
   if (noState.length) return { ok: false, msg: "Species and coefficients are right. Now add the states, (aq), (s), (l) or (g), to every species." };
   return { ok: true, msg: "Correct. Balanced in atoms and charge, in lowest whole numbers." };
@@ -647,7 +664,7 @@ function eqPreview(input) {
 const EQ_ROWS = [
   ["sub", ["₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]],
   ["sup", ["²", "³", "⁴", "⁺", "⁻"]],
-  ["", [["→", " → "], ["+", " + "], "(aq)", "(s)", "(l)", "(g)", ["⌫", null]]]
+  ["", [["→", " → "], ["+", " + "], "(aq)", "(s)", "(l)", "(g)", ["e⁻", "e⁻"], ["⌫", null]]]
 ];
 function eqWidget(check, wrap, out, onResult, saveKey, prev, live) {
   wrap.classList.add("eqn");
@@ -701,8 +718,8 @@ function eqWidget(check, wrap, out, onResult, saveKey, prev, live) {
   const answers = [].concat(check.eq);
   const run = () => {
     const v = inp.value.trim();
-    let res = v ? gradeEq(v, answers[0]) : { ok: false, msg: "Write the equation first." };
-    for (const a of answers.slice(1)) { if (res.ok) break; const r = gradeEq(v, a); if (r.ok) res = r; }
+    let res = v ? gradeEq(v, answers[0], check.medium) : { ok: false, msg: "Write the equation first." };
+    for (const a of answers.slice(1)) { if (res.ok) break; const r = gradeEq(v, a, check.medium); if (r.ok) res = r; }
     out.className = "feedback " + (res.ok ? "good" : "bad"); out.innerHTML = res.msg;
     onResult && onResult(res.ok);
     return res.ok;
