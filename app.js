@@ -478,7 +478,7 @@ function balanceWidget(check, wrap, out, onResult, saveKey, prev, live) {
   const draw = () => {
     const co = coeffs();
     if (co.some(isNaN)) { tally.innerHTML = "Whole numbers only."; return; }
-    tally.innerHTML = sums(co).map(([x, L, Rr]) => `<span class="bal-el ${L === Rr ? "ok" : "off"}"><b>${x}</b> ${L} | ${Rr}</span>`).join("");
+    tally.innerHTML = sums(co).map(([x, L, Rr]) => `<span class="bal-el ${L === Rr ? "ok" : "off"}"><b>${x}</b> ${L} → ${Rr}</span>`).join("");
   };
   const run = () => {
     const co = coeffs();
